@@ -1,6 +1,6 @@
 #ifndef EPOLLMASTERTHREAD_H
 #define EPOLLMASTERTHREAD_H
-
+#include <pthread.h>
 #include "epoll_common.h"
 #include "epoll_work_thread.h"
 

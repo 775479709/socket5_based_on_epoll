@@ -7,6 +7,7 @@ void *EpollWorkThread::StartThread(void *instance) {
 }
 
 void EpollWorkThread::Run() {
+    std::cout<< "work thread is running!" << std::endl;
     epoll_fd_ = epoll_create(5);
     events_ = new std::vector<epoll_event>(8);
     AddFd(epoll_fd_, work_read_pipe_fd, (void *)NULL);
@@ -18,6 +19,7 @@ void EpollWorkThread::Run() {
         }
         if(event_num == events_->size()) {
             events_->resize(events_->size() * 2);
+            std::cout << "thread " << thread_idx <<" events resize :"<< events_->size()<< std::endl;
         }
 
         for(size_t i = 0; i < event_num; i++) {
@@ -38,8 +40,28 @@ void EpollWorkThread::Run() {
     }
 }
 
+void EpollWorkThread::HandAcceptCompleted(ClientInfo * client_info) {
 
-void HandDisconnect(ClientInfo * client_info) {
+}
+
+void EpollWorkThread::HandReadCompleted() {
+
+}
+
+void EpollWorkThread::OnWrite(ClientInfo * client_info) {
+
+}
+
+void EpollWorkThread::HandWrite(){
+
+}
+
+void EpollWorkThread::HandWriteCompleted(){
+
+}
+
+
+void EpollWorkThread::HandDisconnect(ClientInfo * client_info) {
     printf("client %d is close!\n",client_info->clinet_fd);
 }
 

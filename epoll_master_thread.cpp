@@ -1,6 +1,6 @@
 #include "epoll_master_tread.h"
 
-EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_thread_num = 2){
+EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_thread_num){
     work_thread_num_ = work_thread_num;
     listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     assert(listen_fd_ > 0);
@@ -54,7 +54,12 @@ EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_threa
     Run();
 }
 
+EpollMasterThread::~EpollMasterThread(){
+
+}
+
 void EpollMasterThread::Run(){
+    std::cout<< "master thread is running!" << std::endl;
     events_ = new std::vector<epoll_event>(8);
     size_t current_thread_index = 0;
     while(true) {
@@ -65,6 +70,7 @@ void EpollMasterThread::Run(){
         }
         if(event_num == events_->size()) {
             events_->resize(events_->size() * 2);
+            std::cout << "master events resize :"<< events_->size()<< std::endl;
         }
 
         for(size_t i = 0; i < event_num; i++) {
@@ -86,7 +92,7 @@ void EpollMasterThread::Run(){
                     }
                 
                 } else {
-                    
+
                 }
             } else {
 
