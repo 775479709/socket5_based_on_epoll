@@ -9,7 +9,7 @@ void *EpollWorkThread::StartThread(void *instance) {
 void EpollWorkThread::Run() {
     epoll_fd_ = epoll_create(5);
     events_ = new std::vector<epoll_event>(8);
-    AddFd(epoll_fd_, work_read_pipe_fd);
+    AddFd(epoll_fd_, work_read_pipe_fd, (void *)NULL);
     while(true){
         int event_num = epoll_wait(epoll_fd_, &(*events_->begin()),static_cast<int>(events_->size()), 1);
         if(event_num < 0 && errno != EINTR) {
@@ -21,29 +21,41 @@ void EpollWorkThread::Run() {
         }
 
         for(size_t i = 0; i < event_num; i++) {
-            int sock_fd = (*events_)[i].data.fd;
+            ClientInfo * client_info = (ClientInfo *)(*events_)[i].data.ptr;
 
-            if(sock_fd == work_read_pipe_fd) {
-                FromMaster();
-            }else if((*events_)[i].events & EPOLLIN) {
-                OnRead(sock_fd);
+            if((*events_)[i].events & EPOLLIN) {
+                if(client_info == NULL) {
+                    FromMaster();
+                }else {
+                    OnRead(client_info);
+                }
             }else if((*events_)[i].events & EPOLLOUT) {
-                OnWrite(sock_fd);
+                OnWrite(client_info);
             }else if((*events_)[i].events & (EPOLLERR | EPOLLHUP)){
-                CloseClient(sock_fd);
+                CloseClient(client_info);
             }
         }
     }
 }
 
-void EpollWorkThread::CloseClient(int client_fd) {
-    
+
+void HandDisconnect(ClientInfo * client_info) {
+    printf("client %d is close!\n",client_info->clinet_fd);
 }
 
 
-void EpollWorkThread::OnRead(int client_fd) {
+void EpollWorkThread::CloseClient(ClientInfo * client_info) {
+    RemoveFd(epoll_fd_, client_info->clinet_fd);
+    HandDisconnect(client_info);
+}
+
+
+void EpollWorkThread::OnRead(ClientInfo * client_info) {
     char buf[2048];
-    int ret = Readn(client_fd, buf, 2048);
+    int ret = Readn(client_info->clinet_fd, buf, 2048);
+    if(ret == -1) {
+        CloseClient(client_info);
+    }
     buf[ret] = 0;
     printf(" thread_index: %d, recv = %s\n", thread_idx, buf);
 }
@@ -58,7 +70,6 @@ int EpollWorkThread::Readn(int client_fd, char * buf, size_t size) {
             if(ret == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
                 return  static_cast<int>(have_read_size);
             } else {
-                CloseClient(client_fd);
                 return -1;
             }
         }
@@ -80,8 +91,15 @@ void EpollWorkThread::FromMaster() {
             int client_fd;
             memcpy(&client_fd, buf, 4);
             SetNonblocking(client_fd);
-            AddFd(epoll_fd_, client_fd);
-            HandAcceptCompleted(client_fd);
+
+            //TODO add a queue of ClinetInfo
+            ClientInfo *client_info = new ClientInfo;
+            client_info->clinet_fd = client_fd;
+            socklen_t peer_len;
+            getpeername(client_fd, (struct sockaddr *)&(client_info->client_address), &peer_len);
+
+            AddFd(epoll_fd_, client_fd, (void *)client_info);
+            HandAcceptCompleted(client_info);
             size = 0;
         }
     }

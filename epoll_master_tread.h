@@ -7,6 +7,7 @@
 class WorkThreadInfo{
 public:
     size_t client_num;
+    int master_read_pipe_fd;
     int master_write_pipe_fd;
     EpollWorkThread *epoll_work_thread;
     WorkThreadInfo() : client_num(0), epoll_work_thread(nullptr){}
@@ -29,7 +30,6 @@ private:
     WorkThreadInfo *work_thread_info_;
     struct sockaddr_in local_address_;
     std::vector<epoll_event> *events_;
-    __gnu_cxx::hash_map<int, int> *pipe_fd_;
     pthread_t *threads_;
 };
 

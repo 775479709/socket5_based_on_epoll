@@ -15,18 +15,18 @@ public:
     int thread_idx;
 
 private:
-    void CloseClient(int client_fd);
+    void CloseClient(ClientInfo * client_info);
     void FromMaster();
-    void OnRead(int client_fd);
-    void OnWrite(int client_fd);
+    void OnRead(ClientInfo * client_info);
+    void OnWrite(ClientInfo * client_info);
     int Readn(int client_fd, char *buf, size_t size);
     int Writen(int client_fd, char *buf, size_t size);
 
-    virtual void HandAcceptCompleted(int client_fd);
+    virtual void HandAcceptCompleted(ClientInfo * client_info);
     virtual void HandReadCompleted();
     virtual void HandWrite();
     virtual void HandWriteCompleted();
-    virtual void HandDisconnect(int client_fd);
+    virtual void HandDisconnect(ClientInfo * client_info);
 
 
 private:

@@ -28,17 +28,17 @@ static void SetNonblocking(int fd) {
     fcntl(fd,F_SETFL, new_option);
 }
 
-static void AddFd(int epoll_fd, int fd){
+static void AddFd(int epoll_fd, int fd, void *ptr){
     epoll_event event;
-    event.data.fd = fd;
+    event.data.ptr = ptr;
     event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;;
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event);
     SetNonblocking(fd);
 }
 
-static void ModifyFd(int epoll_fd, int fd, uint32_t events) {
+static void ModifyFd(int epoll_fd, int fd, uint32_t events, void *ptr) {
     epoll_event event;
-    event.data.fd = fd;
+    event.data.ptr = ptr;
     event.events = events | EPOLLET | EPOLLRDHUP;
     epoll_ctl( epoll_fd, EPOLL_CTL_MOD, fd, &event );
 }
@@ -49,9 +49,11 @@ static void RemoveFd(int epoll_fd, int fd){
 
 
 class ClientInfo{
+
 public:
     struct sockaddr_in client_address;
     int clinet_fd;
+
 };
 
 

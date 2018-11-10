@@ -2,7 +2,6 @@
 
 EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_thread_num = 2){
     work_thread_num_ = work_thread_num;
-    pipe_fd_ = new __gnu_cxx::hash_map<int, int>();
     listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     assert(listen_fd_ > 0);
     bzero(&local_address_, sizeof(local_address_)); 
@@ -23,7 +22,7 @@ EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_threa
         std::cout << "master thread : listen error!" << std::endl;
     }
     epoll_fd_ = epoll_create(5);
-    AddFd(epoll_fd_, listen_fd_);
+    AddFd(epoll_fd_, listen_fd_,(void *)NULL);
 
     work_thread_info_ = new WorkThreadInfo[work_thread_num];
     threads_ = new pthread_t[work_thread_num];
@@ -37,8 +36,8 @@ EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_threa
         SetNonblocking(fds1[1]);
         SetNonblocking(fds2[0]);
         SetNonblocking(fds2[1]);
-        pipe_fd_->insert(std::make_pair(fds1[0], i));
-        AddFd(epoll_fd_, fds1[0]);
+        AddFd(epoll_fd_, fds1[0], (void*)&work_thread_info_[i]);
+        work_thread_info_[i].master_read_pipe_fd = fds1[0];
         work_thread_info_[i].master_write_pipe_fd = fds2[1];
         work_thread_info_[i].epoll_work_thread->work_read_pipe_fd = fds2[0];
         work_thread_info_[i].epoll_work_thread->work_write_pipe_fd = fds1[1];
@@ -69,22 +68,26 @@ void EpollMasterThread::Run(){
         }
 
         for(size_t i = 0; i < event_num; i++) {
-            int sock_fd = (*events_)[i].data.fd;
+            WorkThreadInfo *work_thread_info = (WorkThreadInfo *)(*events_)[i].data.ptr;
             
-            if(sock_fd == listen_fd_) {
-                int client_fd; 
-                while((client_fd = accept(listen_fd_, (struct sockaddr *)NULL, NULL)) > 0) {
-                    int ret = write(work_thread_info_[current_thread_index].master_write_pipe_fd, &client_fd,sizeof(client_fd));
-                    if(ret != sizeof(client_fd)) {
-                        printf("master write pipe error!");
-                        throw std::exception();
+            if((*events_)[i].events & EPOLLIN) {
+                if(work_thread_info == NULL) {
+                    int client_fd; 
+                    while((client_fd = accept(listen_fd_, (struct sockaddr *)NULL, NULL)) > 0) {
+                        int ret = write(work_thread_info_[current_thread_index].master_write_pipe_fd, &client_fd,sizeof(client_fd));
+                        if(ret != sizeof(client_fd)) {
+                            printf("master write pipe error!");
+                            throw std::exception();
+                        }
+                        current_thread_index++;
+                        if(current_thread_index >= work_thread_num_) {
+                            current_thread_index = 0;
+                        }
                     }
-                    current_thread_index++;
-                    if(current_thread_index >= work_thread_num_) {
-                        current_thread_index = 0;
-                    }
-                }
                 
+                } else {
+                    
+                }
             } else {
 
             }
