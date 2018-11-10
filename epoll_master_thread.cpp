@@ -74,7 +74,6 @@ void EpollMasterThread::Run(){
             if(sock_fd == listen_fd_) {
                 int client_fd; 
                 while((client_fd = accept(listen_fd_, (struct sockaddr *)NULL, NULL)) > 0) {
-                    SetNonblocking(client_fd);
                     int ret = write(work_thread_info_[current_thread_index].master_write_pipe_fd, &client_fd,sizeof(client_fd));
                     if(ret != sizeof(client_fd)) {
                         printf("master write pipe error!");
