@@ -7,9 +7,10 @@ void *EpollWorkThread::StartThread(void *instance) {
 }
 
 void EpollWorkThread::Run() {
-    std::cout<< "work thread is running!" << std::endl;
+    std::cout<< "work thread:"<< thread_idx <<" is running!" << std::endl;
+    
     epoll_fd_ = epoll_create(5);
-    events_ = new std::vector<epoll_event>(8);
+    events_ = new std::vector<epoll_event>(64);
     AddFd(epoll_fd_, work_read_pipe_fd, (void *)NULL);
     while(true){
         int event_num = epoll_wait(epoll_fd_, &(*events_->begin()),static_cast<int>(events_->size()), 1);
@@ -19,7 +20,6 @@ void EpollWorkThread::Run() {
         }
         if(event_num == events_->size()) {
             events_->resize(events_->size() * 2);
-            std::cout << "thread " << thread_idx <<" events resize :"<< events_->size()<< std::endl;
         }
 
         for(size_t i = 0; i < event_num; i++) {
@@ -62,7 +62,7 @@ void EpollWorkThread::HandWriteCompleted(){
 
 
 void EpollWorkThread::HandDisconnect(ClientInfo * client_info) {
-    printf("client %d is close!\n",client_info->clinet_fd);
+    printf("thread:%d,client %d is close!\n", thread_idx, client_info->clinet_fd);
 }
 
 
@@ -77,6 +77,7 @@ void EpollWorkThread::OnRead(ClientInfo * client_info) {
     int ret = Readn(client_info->clinet_fd, buf, 2048);
     if(ret == -1) {
         CloseClient(client_info);
+        return;
     }
     buf[ret] = 0;
     printf(" thread_index: %d, recv = %s\n", thread_idx, buf);
@@ -84,19 +85,20 @@ void EpollWorkThread::OnRead(ClientInfo * client_info) {
 
 
 int EpollWorkThread::Readn(int client_fd, char * buf, size_t size) {
-    int have_read_size = 0;
+    size_t have_read_size = 0;
     int ret = 0;
-    while(true) {
+    while(have_read_size < size) {
         ret = read(client_fd, buf + have_read_size, size - have_read_size);
         if(ret <= 0) {
             if(ret == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                return  static_cast<int>(have_read_size);
+                return static_cast<int>(have_read_size);
             } else {
                 return -1;
             }
         }
         have_read_size += ret;
     }
+    return static_cast<int>(have_read_size);
 }
 
 void EpollWorkThread::FromMaster() {

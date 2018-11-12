@@ -35,6 +35,18 @@ class ClientInfo{
 public:
     struct sockaddr_in client_address;
     int clinet_fd;
+};
+
+
+struct MemoryBlock{
+
+
+};
+
+class MemoryPool{
+
+
+private:
 
 };
 

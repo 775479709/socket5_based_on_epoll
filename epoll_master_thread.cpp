@@ -78,9 +78,9 @@ void EpollMasterThread::Run(){
             
             if((*events_)[i].events & EPOLLIN) {
                 if(work_thread_info == NULL) {
-                    int client_fd; 
+                    int client_fd;
                     while((client_fd = accept(listen_fd_, (struct sockaddr *)NULL, NULL)) > 0) {
-                        int ret = write(work_thread_info_[current_thread_index].master_write_pipe_fd, &client_fd,sizeof(client_fd));
+                        int ret = write(work_thread_info_[current_thread_index].master_write_pipe_fd, &client_fd, sizeof(client_fd));
                         if(ret != sizeof(client_fd)) {
                             printf("master write pipe error!");
                             throw std::exception();
