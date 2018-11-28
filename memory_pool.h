@@ -28,5 +28,5 @@ private:
     char *free_memory_addr_;
     sizt_t total_memory_block_count_;
     size_t free_memory_block_count_;
-    trl::unordered_map<void *, MemoryBlock *> *memory_ascription_;s
+    trl::unordered_map<void *, MemoryBlock *> *memory_ascription_;
 };
