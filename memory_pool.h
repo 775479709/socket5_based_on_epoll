@@ -5,6 +5,7 @@
 #include<string.h>
 #include<stddef.h>
 #include<stdio.h>
+#include<set>
 template<size_t BlockSize>
 class MemoryPool{
 private:
@@ -32,6 +33,7 @@ private:
     MemoryBlock *free_memory_block_head_;
     MemoryBlock *free_memory_block_tail_;
     char *free_memory_addr_;
+    size_t head_memory_block_free_size_;
     size_t total_memory_block_count_;
     size_t free_memory_block_count_;
     std::unordered_map<void *, MemoryBlock *> *memory_ascription_;
@@ -51,6 +53,7 @@ MemoryPool<BlockSize>::MemoryPool() {
     free_memory_addr_ = free_memory_block_head_->buffer;
     total_memory_block_count_ = 2;
     free_memory_block_count_ = 1;
+    head_memory_block_free_size_ = BlockSize;
     memory_ascription_ = new std::unordered_map<void *, MemoryBlock *>();
     //test only
     total_new_count = 2;
@@ -60,25 +63,34 @@ MemoryPool<BlockSize>::MemoryPool() {
 
 template<size_t BlockSize>
 MemoryPool<BlockSize>::~MemoryPool() {
-   for(auto memory_ascription_iterator : *memory_ascription_) {
-       if(memory_ascription_iterator.second != free_memory_block_head_) {
-           delete memory_ascription_iterator.second;
-           //test only
-           total_free_count++;
-           //test only
-       }
-   }
-   delete memory_ascription_;
-   MemoryBlock * next = nullptr;
-   while(free_memory_block_head_ != nullptr) {
-       next = free_memory_block_head_->next;
-       delete free_memory_block_head_;
-       //test only
-       total_free_count++;
-       //test only
-       free_memory_block_head_ = next;
-   }
-   printf("total_new_count = %d, total_free_count = %d\n",total_new_count,total_free_count);
+    //test only
+    int count = 0;
+    //test only
+    std::set<MemoryBlock *>memory_block_ptr_set;
+    for(auto memory_ascription_iterator : *memory_ascription_) {
+        memory_block_ptr_set.insert(memory_ascription_iterator.second);
+        //test only
+        count++;
+        //test only
+    }
+    //test only
+    printf("count =%d\n",count);
+    //test only
+    delete memory_ascription_;
+    MemoryBlock * next = nullptr;
+    while(free_memory_block_head_ != nullptr) {
+        next = free_memory_block_head_->next;
+        memory_block_ptr_set.insert(free_memory_block_head_);
+        free_memory_block_head_ = next;
+    }
+    total_free_count+= memory_block_ptr_set.size();
+    for(auto set_iterator : memory_block_ptr_set) {
+        delete set_iterator;
+    }
+    //test only
+    printf("stay size = %lu,total_new_count = %lu, total_free_count = %lu\n",total_memory_block_count_,total_new_count,total_free_count);
+    
+    //test only
 }
 
 template<size_t BlockSize>
@@ -90,6 +102,9 @@ void MemoryPool<BlockSize>::DeleteRedundantMemoryBlock(){
             delete free_memory_block_head_->next;
             free_memory_block_count_--;
             total_memory_block_count_--;
+            //test only
+            total_free_count++;
+            //test only
             free_memory_block_head_->next = next;
         }
     }
@@ -105,8 +120,10 @@ void MemoryPool<BlockSize>::AddFreeMemoryBlock(MemoryBlock *memory_block) {
 template<size_t BlockSize>
 void MemoryPool<BlockSize>::NewMemoryBlock() {
     AddFreeMemoryBlock(new MemoryBlock());
+
     total_memory_block_count_++;
     //test only
+    //printf("total count = %lu\n",total_memory_block_count_);
     total_new_count++;
     //test only
 }
@@ -118,9 +135,10 @@ void *MemoryPool<BlockSize>::Malloc(size_t size) {
 
         perror("MemoryPool malloc size > block size!!!");
     }
-    if(free_memory_block_head_->free_size < need_size) {
+    if(head_memory_block_free_size_ < need_size) {
         free_memory_block_head_ = free_memory_block_head_->next;
         free_memory_addr_ = free_memory_block_head_->buffer;
+        head_memory_block_free_size_ = BlockSize;
         free_memory_block_count_--;
         if(free_memory_block_head_ == free_memory_block_tail_) {
             NewMemoryBlock();
@@ -130,27 +148,37 @@ void *MemoryPool<BlockSize>::Malloc(size_t size) {
     void * malloc_memory_addr_ = (void *)(free_memory_addr_ + sizeof(size_t));
     free_memory_addr_ += need_size;
     free_memory_block_head_->free_size -= need_size;
-    (*memory_ascription_)[malloc_memory_addr_] = free_memory_block_head_;
+    head_memory_block_free_size_ -= need_size;
+   // (*memory_ascription_)[malloc_memory_addr_] = free_memory_block_head_;
     DeleteRedundantMemoryBlock();
     return malloc_memory_addr_;
 }
 
 template<size_t BlockSize>
 void MemoryPool<BlockSize>::Free(void *addr) {
+   // size_t malloc_size;
+   // memcpy(&malloc_size, ((char*)addr - sizeof(size_t)), sizeof(size_t));
+    // free_memory_block_head_->free_size = BlockSize;
+    // free_memory_addr_ = free_memory_block_head_->buffer;
+    // head_memory_block_free_size_ = BlockSize;
+
     auto memory_ascription_iterator = memory_ascription_->find(addr);
     if(memory_ascription_iterator == memory_ascription_->end()) {
         return;
     }
     size_t malloc_size;
-    memcpy(&malloc_size, addr - sizeof(size_t), sizeof(size_t));
+    memcpy(&malloc_size, ((char*)addr - sizeof(size_t)), sizeof(size_t));
     memory_ascription_iterator->second->free_size += malloc_size;
-    if(memory_ascription_iterator->second->free_size == BlockSize && 
-       memory_ascription_iterator->second != free_memory_block_head_) {
-        memory_ascription_iterator->second->next = nullptr;
-        AddFreeMemoryBlock(memory_ascription_iterator->second);
-        memory_ascription_->erase(memory_ascription_iterator);
+    memory_ascription_->erase(memory_ascription_iterator);
+    if(memory_ascription_iterator->second->free_size == BlockSize) {
+        if(memory_ascription_iterator->second == free_memory_block_head_) {
+            head_memory_block_free_size_ = BlockSize;
+            free_memory_addr_ = free_memory_block_head_->buffer;
+        }else {
+            memory_ascription_iterator->second->next = nullptr;
+            AddFreeMemoryBlock(memory_ascription_iterator->second);
+        }
     }
-    
 }
 
 #endif
