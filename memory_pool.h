@@ -4,107 +4,184 @@
 
 #include<stddef.h>
 #include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<algorithm>
 
 
-template<class T, size_t pool_size>
+template<class T>
+class Queue {
+public:
+    Queue(){
+        capacity_ = 128 * 128;
+        array_ = (T *)malloc(capacity_ * sizeof(T));
+        head_ = 0;
+        tail_ = 0;
+        mod_ = capacity_ - 1;
+    }
+
+    ~Queue() {
+        free((void *)array_);
+    }
+
+    void Resize(bool bigger) {
+        T *new_array = (T *)malloc((bigger ? capacity_ << 1 : capacity_ >> 1) * sizeof(T));
+        if(head_ < tail_) {
+            memcpy(new_array, &array_[head_], (tail_ - head_) * sizeof(T));
+            tail_ = tail_ - head_;
+        }else {
+            memcpy(new_array, &array_[head_], (capacity_ - head_) * sizeof(T));
+            memcpy(new_array + (capacity_ - head_), array_, tail_ * sizeof(T));
+            tail_ += capacity_ - head_;
+        }
+        head_ = 0;
+        capacity_ = bigger ? capacity_ << 1 : capacity_ >> 1;
+        mod_ = capacity_ - 1;
+        free((void *)array_);
+        array_ = new_array;
+        
+    }
+
+    void offer(T &data) {
+        array_[tail_++] = data;
+        tail_ &= mod_;
+        if(tail_ == head_) {
+            Resize(true);
+        }
+    }
+
+    T poll() {
+        if((head_ <= tail_ ? tail_ - head_ : capacity_ - head_ + tail_) < (capacity_ >> 2) && capacity_ > 128) {
+            Resize(false);
+        }
+        T &data = array_[head_];
+        head_ != tail_ ? (head_ = head_ + 1 & mod_) : throw("Queue has no element!");
+        return data;
+    }
+    
+    size_t size() {
+        return tail_ >= head_ ? tail_ - head_ : capacity_ - head_ + tail_;
+    }
+    size_t capacity() {
+        return capacity_;
+    }
+
+    void AdjustQueue() {
+        while(head_ > tail_) {
+            array_[tail_] = array_[head_];
+            head_ = head_ + 1 & mod_;
+            tail_ = tail_ + 1 & mod_;
+        }
+    }
+
+    T *Begin() {
+        AdjustQueue();
+        return &array_[head_];
+    }
+
+    T *End() {
+        AdjustQueue();
+        return &array_[tail_];
+    }
+
+private:
+    T *array_;
+    size_t mod_;
+    size_t capacity_;
+    size_t head_;
+    size_t tail_;
+};
+
+
+
+template<class obj, size_t pool_size>
 class MemoryPool {
 public:
-    T *New();
-    void Delete(T *buffer);
+    obj *New();
+    bool Delete(obj *buffer);
     void DeleteRedundantMemoryBlock();
     MemoryPool();
     ~MemoryPool();
 private:
-    
-    void AddFreeQueue(T *buffer);
+    obj *NewBuffer();
 
 private:
-    bool need_clear_memory_;
-    size_t total_block_count_;
-
-    T **buffer_queue_;
-    size_t buffer_queue_capacity_;
-    size_t buffer_queue_head_;
-    size_t buffer_queue_tail_;
-    
-
-    char **memory_block_array_;
-    size_t memory_block_capacity_;
-    size_t memory_block_back_;
+    Queue<obj *> *buffer_queue_;
+    Queue<obj *> *memory_block_queue_;
+    size_t memory_block_unit_count_;
 };
 
 
-template<class T, size_t pool_size>
-MemoryPool<T, pool_size>::MemoryPool() {
-    need_clear_memory_ = false;
-    total_block_count_ = 0;
-    head_ = 0;
-    tail_ = 0;
-    capacity_ = 128;
-    queue = (T **)malloc(sizeof(T *) * 128);
-    T * buffer = (T *)malloc(sizeof(T) * pool_size);
-    for(size_t i = 0; i < pool_size; i++) {
-        AddFreeQueue(&buffer[i]);
+template<class obj, size_t pool_size>
+MemoryPool<obj, pool_size>::MemoryPool() {
+    buffer_queue_ = new Queue<obj *>();
+    memory_block_queue_ = new Queue<obj *>();
+    memory_block_unit_count_ = -1;
+}
+
+template<class obj,size_t pool_size>
+MemoryPool<obj, pool_size>::~MemoryPool() {
+    if(buffer_queue_->size() + memory_block_unit_count_ + 1 != memory_block_queue_->size() * pool_size) {
+        throw ("Memory leak exists");
     }
-}
-
-template<class T,size_t pool_size>
-MemoryPool<T, pool_size>::~MemoryPool() {
-    // if(total_block_count_ != free_block_queue_->size()){
-    //     perror("Memory leak exists!!");
-    // }
-    // while(!free_block_queue_->empty()) {
-    //     delete free_block_queue_->front();
-    //     free_block_queue_->pop();
-    // }
-   // delete free_block_queue_;
-
-}
-
-template<class T,size_t pool_size>
-T *MemoryPool<T, pool_size>::New() {
-    if(head == tail) {
-        NewBuffer();
+    while(memory_block_queue_->size()) {
+        free((void *)memory_block_queue_->poll());
     }
-    T *buffer = queue[head++];
-
-    return data[head++];
-
-    // if(free_block_queue_->size() == 0) {
-    //     T * buffers = new T[1024];
-    //     for(long long i = 0; i < 1024; i++)
-    //     {
-    //         free_block_queue_->push(&buffers[i]);
-    //     }
-    //     total_block_count_+=1024;
-    // }
-    
-    // T * buffer = free_block_queue_->front();
-    // free_block_queue_->pop();
-    // return buffer;
+    delete buffer_queue_;
+    delete memory_block_queue_;
 }
 
-template<class T,size_t pool_size>
-void MemoryPool<T, pool_size>::Free(T * buffer) {
-    data[tail++] = buffer;
-    if(tail > max_size) {
-        tail = 0;
+
+template<class obj,size_t pool_size>
+obj *MemoryPool<obj, pool_size>::NewBuffer() {
+    if(memory_block_unit_count_ == -1) {
+        //alloc a new memory block
+        obj *buffer_ptr = (obj *)malloc(sizeof(obj) * pool_size);
+        memory_block_queue_->offer(buffer_ptr);
+        memory_block_unit_count_ = pool_size - 1;
     }
-   // free_block_queue_->push(buffer);
-   // DeleteRedundantMemoryBlock();
+    return (*memory_block_queue_->End()) + memory_block_unit_count_--;
 }
 
-// template<class T>
-// void MemoryPool<T>::DeleteRedundantMemoryBlock() {
-//     size_t used_block_count = total_block_count_ - free_block_queue_->size();
-//     if(free_block_queue_->size() * 2 > used_block_count && free_block_queue_->size() > 2) {
-//         delete free_block_queue_->front();
-//         free_block_queue_->pop();
-//         delete free_block_queue_->front();
-//         free_block_queue_->pop();
-//         total_block_count_ -= 2;
-//     }
-// }
+template<class obj,size_t pool_size>
+obj *MemoryPool<obj, pool_size>::New() {
+    if(buffer_queue_->size() == 0) {
+        return new(NewBuffer())obj();
+    }
+    return new(buffer_queue_->poll())obj();
+}
+
+
+template<class obj,size_t pool_size>
+bool MemoryPool<obj, pool_size>::Delete(obj *buffer) {
+    buffer->~obj();
+    buffer_queue_->offer(buffer);
+    return buffer_queue_->size() > (memory_block_queue_->size() * pool_size >> 2);
+}
+
+
+template<class obj,size_t pool_size>
+void MemoryPool<obj, pool_size>::DeleteRedundantMemoryBlock() {
+    while(memory_block_unit_count_ != -1) {
+        obj *buffer = (*memory_block_queue_->End()) + memory_block_unit_count_--;
+        buffer_queue_->offer(buffer);
+    }
+    std::sort(buffer_queue_->Begin(), buffer_queue_->End());
+    size_t size = memory_block_queue_->size();
+    size_t need_erase_size = size >> 1;
+    while(size && need_erase_size != 0) {
+        size--;
+        
+    }
+    //TODO::binary search
+}
+
+
+
+
+
+
+
 
 
 
