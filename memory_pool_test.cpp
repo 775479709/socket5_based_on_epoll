@@ -2,85 +2,95 @@
 #include<stdlib.h>
 #include<sys/time.h>
 #include<vector>
+#include<time.h>
+#include<queue>
+#include<stdio.h>
+//#pragma GCC optimize(2)
 int myrand(int l,int r){
     return rand()%(r-l+1) +l;
 }
+
+class Buffer{
+    char data[32];
+};
+
+bool IsMalloc() {
+    int op = myrand(1,5);
+    return op > 2;
+}
+
+const int max_time = 5000000;
 
 int main(int argc, char **argv)
 {
     srand(time(0));
     timeval start, end;
     const size_t mx= 128;
-    char ** p = new char *[5000000];
+    std::queue<Buffer *>q;
     if(argc > 1) {
 
-        MemoryPool<mx * 1024*10>* memory_pool = new MemoryPool<mx * 1024*10>();
-        long long all_1 = 0;
+        object_pool<Buffer>* memory_pool = new object_pool<Buffer>();
+        size_t malloc_count = 0;
+        size_t free_count = 0;
+        // for(int i = 0; i < max_time; i++) {
+        //     q.push(memory_pool->construct());
+        // }
+        // while(!q.empty()) {
+        //     memory_pool->Free(q.front());
+        //     q.pop();
+        // }
+
         
         gettimeofday(&start, 0);
-        for(int i = 0; i < 5000000;i++) {
-            size_t size = myrand(1,mx - 10);
-            char *f = (char *)memory_pool->Malloc(size);
-            all_1 += size;
-            p[i] =f;
-
-            // size_t size2 = myrand(1,mx - 100);
-            // char *f2 = (char *)memory_pool->Malloc(size2);
-            // all_1 += size2;
-
-            // size_t size3 = myrand(1,mx - 100);
-            // char *f3 = (char *)memory_pool->Malloc(size3);
-            // all_1 += size3;
-
-            //memory_pool->Free((void *)f);
-            // memory_pool->Free((void *)f2);
-            // memory_pool->Free((void *)f3);
+        for(int i = 0; i < max_time;i++) {
+            if(IsMalloc()) {
+                q.push(memory_pool->construct());
+                malloc_count++;
+            }else {
+                memory_pool->destroy(q.front());
+                q.pop();
+                free_count++;
+            }
         }
         gettimeofday(&end, 0);
         long long t1 = 1000000ll*(end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
-        printf("allsize = %lld,time =%lld\n",all_1,t1);
-
-
-        // gettimeofday(&start, 0);
-        // for(int i = 0; i < 5000000;i++) {
-        //     memory_pool->Free((void *)p[i]);
-        // }
-        // gettimeofday(&end, 0);
-        // t1 = 1000000ll*(end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
-
-        printf("free ::allsize = %lld,time =%lld\n",all_1,t1);
+        printf("malloc_count= %lu,free_count = %lu,time =%lld\n",malloc_count,free_count,t1);
+        while(!q.empty()) {
+            memory_pool->destroy(q.front());
+            q.pop();
+        }
         delete memory_pool;
     }else {
-        long long all_1 = 0;
-        gettimeofday(&start, 0);
-        for(int i = 0; i < 5000000;i++) {
-            size_t size = myrand(1,mx - 10);
-            char *f = (char *)malloc(size);
-            all_1 += size;
-            p[i] = f;
 
-            // size_t size2 = myrand(1,mx - 100);
-            // char *f2 = new char[size];
-            // all_1 += size2;
-            // size_t size3 = myrand(1,mx - 100);
-            // char *f3 = new char[size];
-            // all_1 += size3;
-            //delete [] f;
-            // delete [] f2;
-            // delete [] f3;
-        }
-        gettimeofday(&end, 0);
-        int t1 = 1000000*(end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
-        printf("allsize = %lld,time =%d\n",all_1,t1);
+        size_t malloc_count = 0;
+        size_t free_count = 0;
 
+        
+        // while(!q.empty()) {
+        //     free(q.front());
+        //     q.pop();
+        // }
 
         gettimeofday(&start, 0);
-        for(int i = 0; i < 1000000;i++) {
-            delete p[i];
+        for(int i = 0; i < max_time;i++) {
+             if(IsMalloc()) {
+                q.push((Buffer *)malloc(sizeof(Buffer)));
+                malloc_count++;
+            }else {
+                free(q.front());
+                free_count++;
+                q.pop();
+            }
         }
         gettimeofday(&end, 0);
-        t1 = 1000000*(end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
-        printf("free::allsize = %lld,time =%d\n",all_1,t1);
+        long long t1 = 1000000ll*(end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
+        printf("malloc_count= %lu,free_count = %lu,time =%lld\n",malloc_count,free_count,t1);
+        // while(!q.empty()) {
+        //     delete q.front();
+        //     q.pop();
+        // }
+
+
     }
 
 

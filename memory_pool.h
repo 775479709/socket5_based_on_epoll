@@ -1,22 +1,111 @@
 #ifndef MEMORY_POLL_H_
 #define MEMORY_POLL_H_
 
-#include<unordered_map>
-#include<string.h>
+
 #include<stddef.h>
 #include<stdio.h>
 
 
-template<class T>
+template<class T, size_t pool_size>
 class MemoryPool {
-    public:
+public:
     T *New();
-    void Free(T *buffer);
+    void Delete(T *buffer);
+    void DeleteRedundantMemoryBlock();
+    MemoryPool();
+    ~MemoryPool();
 private:
-    size_t total_Block_count_;
-    size_t free_block_count_;
-    T *free_Block_head_;
+    
+    void AddFreeQueue(T *buffer);
+
+private:
+    bool need_clear_memory_;
+    size_t total_block_count_;
+
+    T **buffer_queue_;
+    size_t buffer_queue_capacity_;
+    size_t buffer_queue_head_;
+    size_t buffer_queue_tail_;
+    
+
+    char **memory_block_array_;
+    size_t memory_block_capacity_;
+    size_t memory_block_back_;
 };
+
+
+template<class T, size_t pool_size>
+MemoryPool<T, pool_size>::MemoryPool() {
+    need_clear_memory_ = false;
+    total_block_count_ = 0;
+    head_ = 0;
+    tail_ = 0;
+    capacity_ = 128;
+    queue = (T **)malloc(sizeof(T *) * 128);
+    T * buffer = (T *)malloc(sizeof(T) * pool_size);
+    for(size_t i = 0; i < pool_size; i++) {
+        AddFreeQueue(&buffer[i]);
+    }
+}
+
+template<class T,size_t pool_size>
+MemoryPool<T, pool_size>::~MemoryPool() {
+    // if(total_block_count_ != free_block_queue_->size()){
+    //     perror("Memory leak exists!!");
+    // }
+    // while(!free_block_queue_->empty()) {
+    //     delete free_block_queue_->front();
+    //     free_block_queue_->pop();
+    // }
+   // delete free_block_queue_;
+
+}
+
+template<class T,size_t pool_size>
+T *MemoryPool<T, pool_size>::New() {
+    if(head == tail) {
+        NewBuffer();
+    }
+    T *buffer = queue[head++];
+
+    return data[head++];
+
+    // if(free_block_queue_->size() == 0) {
+    //     T * buffers = new T[1024];
+    //     for(long long i = 0; i < 1024; i++)
+    //     {
+    //         free_block_queue_->push(&buffers[i]);
+    //     }
+    //     total_block_count_+=1024;
+    // }
+    
+    // T * buffer = free_block_queue_->front();
+    // free_block_queue_->pop();
+    // return buffer;
+}
+
+template<class T,size_t pool_size>
+void MemoryPool<T, pool_size>::Free(T * buffer) {
+    data[tail++] = buffer;
+    if(tail > max_size) {
+        tail = 0;
+    }
+   // free_block_queue_->push(buffer);
+   // DeleteRedundantMemoryBlock();
+}
+
+// template<class T>
+// void MemoryPool<T>::DeleteRedundantMemoryBlock() {
+//     size_t used_block_count = total_block_count_ - free_block_queue_->size();
+//     if(free_block_queue_->size() * 2 > used_block_count && free_block_queue_->size() > 2) {
+//         delete free_block_queue_->front();
+//         free_block_queue_->pop();
+//         delete free_block_queue_->front();
+//         free_block_queue_->pop();
+//         total_block_count_ -= 2;
+//     }
+// }
+
 
 
 
@@ -78,7 +167,7 @@ private:
 // template<size_t BlockSize>
 // MemoryPool<BlockSize>::~MemoryPool() {
 //     //test only
-//     int count = 0;
+//     long long count = 0;
 //     //test only
 //     std::set<MemoryBlock *>memory_block_ptr_set;
 //     for(auto memory_ascription_iterator : *memory_ascription_) {
@@ -88,7 +177,7 @@ private:
 //         //test only
 //     }
 //     //test only
-//     printf("count =%d\n",count);
+//     prlong longf("count =%d\n",count);
 //     //test only
 //     delete memory_ascription_;
 //     MemoryBlock * next = nullptr;
@@ -102,7 +191,7 @@ private:
 //         delete set_iterator;
 //     }
 //     //test only
-//     printf("stay size = %lu,total_new_count = %lu, total_free_count = %lu\n",total_memory_block_count_,total_new_count,total_free_count);
+//     prlong longf("stay size = %lu,total_new_count = %lu, total_free_count = %lu\n",total_memory_block_count_,total_new_count,total_free_count);
     
 //     //test only
 // }
@@ -137,7 +226,7 @@ private:
 
 //     total_memory_block_count_++;
 //     //test only
-//     //printf("total count = %lu\n",total_memory_block_count_);
+//     //prlong longf("total count = %lu\n",total_memory_block_count_);
 //     total_new_count++;
 //     //test only
 // }
@@ -158,13 +247,15 @@ private:
 //             NewMemoryBlock();
 //         }
 //     }
-//     memcpy(free_memory_addr_,&need_size, sizeof(size_t));
+//     unsigned short x = 2;
+//    // memcpy(free_memory_addr_,&x, 2);
+//     *((unsigned short *)free_memory_addr_) = x;
 //     void * malloc_memory_addr_ = (void *)(free_memory_addr_ + sizeof(size_t));
 //     free_memory_addr_ += need_size;
 //     free_memory_block_head_->free_size -= need_size;
 //     head_memory_block_free_size_ -= need_size;
-//    // (*memory_ascription_)[malloc_memory_addr_] = free_memory_block_head_;
-//     DeleteRedundantMemoryBlock();
+//     //(*memory_ascription_)[malloc_memory_addr_] = free_memory_block_head_;
+//     //DeleteRedundantMemoryBlock();
 //     return malloc_memory_addr_;
 // }
 
