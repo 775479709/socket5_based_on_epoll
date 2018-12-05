@@ -18,7 +18,7 @@ class Buffer{
     char data[4096];
 public:
     Buffer(){}
-    ~Buffer(){}
+    ~Buffer(){printf("destory\n");}
 };
 
 bool IsMalloc() {
@@ -26,7 +26,7 @@ bool IsMalloc() {
     return op > 2;
 }
 
-const int max_time = 100000;
+const int max_time = 1000000;
 
 int main(int argc, char **argv)
 {
@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     timeval start, end;
     const size_t mx= 128;
     std::queue<Buffer *>q;
+    
     if(argc > 1) {
 
         MemoryPool<Buffer,1024>* memory_pool = new MemoryPool<Buffer,1024>();
@@ -46,16 +47,18 @@ int main(int argc, char **argv)
         //     memory_pool->Free(q.front());
         //     q.pop();
         // }
-
-        
+        //Buffer *tmp = (Buffer *)malloc(sizeof(Buffer));
+        //memory_pool->Delete2(tmp);
         gettimeofday(&start, 0);
         for(int i = 0; i < max_time;i++) {
+            printf("i\n");
             if(IsMalloc()) {
-                Buffer * new_f = memory_pool->New();
+                Buffer * new_f = memory_pool->New2();
                 q.push(new_f);
                 malloc_count++;
             }else if(q.size()){
-                memory_pool->Delete(q.front());
+                printf("cd de\n");
+                memory_pool->Delete2(q.front());
                 q.pop();
                 free_count++;
             }
@@ -66,7 +69,7 @@ int main(int argc, char **argv)
         printf("malloc_count= %lu,free_count = %lu,time =%lld\n",malloc_count,free_count,t1);
         
         while(!q.empty()) {
-            memory_pool->Delete(q.front());
+            memory_pool->Delete2(q.front());
             q.pop();
         }
         delete memory_pool;
