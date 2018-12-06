@@ -9,6 +9,147 @@
 #include<algorithm>
 
 
+template<class obj, size_t pool_size>
+class MemoryPool {
+public:
+    obj *New();
+    bool Delete(obj *buffer);
+    void DeleteRedundantMemoryBlock();
+    MemoryPool();
+    ~MemoryPool();
+private:
+    void AllocMemoryBlock();
+    bool NeedCleanMemoryBlock();
+    obj *NewBuffer();
+
+private:
+    char *memory_block_head_;
+    size_t memory_block_count_;
+    size_t memory_block_unit_count_;
+
+    size_t free_buffer_count_;
+    obj *free_buffer_head_;
+};
+
+
+template<class obj, size_t pool_size>
+MemoryPool<obj, pool_size>::MemoryPool() {
+    memory_block_head_ = nullptr;
+    memory_block_count_ = 0;
+    memory_block_unit_count_ = -1;
+
+    free_buffer_count_ = 0;
+    free_buffer_head_ = nullptr;
+}
+
+template<class obj,size_t pool_size>
+MemoryPool<obj, pool_size>::~MemoryPool() {
+    if(free_buffer_count_ + memory_block_unit_count_ + 1 != memory_block_count_ * pool_size) {
+         perror("MemoryPool::No buffer delete exists");
+    }
+    while(memory_block_head_ != nullptr) {
+        char *next;
+        memcpy(&next, memory_block_head_, sizeof(char *));
+        free(memory_block_head_);
+        memory_block_head_ = next;
+    }
+}
+
+
+template<class obj,size_t pool_size>
+void MemoryPool<obj, pool_size>::AllocMemoryBlock() {
+    char *buffer_ptr = (char *)malloc(sizeof(obj) * pool_size + sizeof(char *));
+    memcpy(buffer_ptr, &memory_block_head_, sizeof(char *));
+    memory_block_head_ = buffer_ptr;
+    memory_block_count_++;
+    memory_block_unit_count_ = pool_size - 1;
+}
+
+template<class obj,size_t pool_size>
+obj *MemoryPool<obj, pool_size>::NewBuffer() {
+    if(memory_block_unit_count_ == -1) {
+        AllocMemoryBlock();
+    }
+    return (obj *)(memory_block_head_ + sizeof(char *) + (memory_block_unit_count_--) * sizeof(obj));
+}
+
+
+
+template<class obj,size_t pool_size>
+obj *MemoryPool<obj, pool_size>::New() {
+    if(free_buffer_count_ == 0) {
+        return new(NewBuffer())obj();
+    }
+    obj *buffer = free_buffer_head_;
+    memcpy(&free_buffer_head_, free_buffer_head_, sizeof(free_buffer_head_));
+    free_buffer_count_--;
+    return new(buffer)obj();
+}
+
+
+
+template<class obj,size_t pool_size>
+bool MemoryPool<obj, pool_size>::Delete(obj *buffer) {
+    buffer->~obj();
+    memcpy(buffer, &free_buffer_head_, sizeof(free_buffer_head_));
+    free_buffer_head_ = buffer;
+    free_buffer_count_++;
+    return NeedCleanMemoryBlock();
+}
+template<class obj,size_t pool_size>
+bool MemoryPool<obj, pool_size>::NeedCleanMemoryBlock(){
+    return free_buffer_count_ > (memory_block_count_ * pool_size >> 2) && memory_block_count_ > 1;
+}
+
+template<class obj,size_t pool_size>
+void MemoryPool<obj, pool_size>::DeleteRedundantMemoryBlock() {
+    if(!NeedCleanMemoryBlock()) {
+        return;
+    }
+    char **memory_block_addr = (char **)malloc(memory_block_count_ > 4096 ? memory_block_count_ : 4096);
+    size_t size = (memory_block_count_ > 1024 ? memory_block_count_ : 1024) * sizeof(size_t);
+    size_t *hash_count = (size_t *)malloc(size);
+    memset(hash_count, 0, size);
+
+    char *head = memory_block_head_;
+    for(size_t i = 0; i < memory_block_count_; i++) {
+        memory_block_addr[i] = head;
+        memcpy(&head, head, sizeof(char *));
+    }
+    std::sort(memory_block_addr, memory_block_addr + memory_block_count_);
+    obj *free_buffer = free_buffer_head_;
+    while(free_buffer != nullptr) {
+        int index = std::upper_bound(memory_block_addr, memory_block_addr + memory_block_count_) - memory_block_addr - 1;
+        if(index < 0 || memory_block_addr[index] + sizeof(char *) + (pool_size - 1) * sizeof(obj) < (char *)free_buffer)
+        {
+            throw("DeleteRedundantMemoryBlock have bug");
+        }
+        hash_count[index]++;
+        memcpy(&free_buffer, free_buffer, sizeof(char *));
+    }
+    size_t new_memory_block_count = 0;
+    size_t delete_memory_block_count = 0;
+    for(size_t i = 0; i < memory_block_count_; i++) {
+        if(delete_memory_block_count >= (memory_block_count_ >> 1)){
+            break;
+        }
+        if(hash_count[i] == pool_size) {
+            delete_memory_block_count++;
+
+        }
+    }
+
+
+}
+
+
+
+
+
+
+
+
+/*
 template<class T>
 class Queue {
 public:
@@ -95,129 +236,7 @@ private:
     size_t head_;
     size_t tail_;
 };
-
-
-
-template<class obj, size_t pool_size>
-class MemoryPool {
-public:
-    obj *New();
-    obj *New2();
-    bool Delete2(obj *buffer);
-    bool Delete(obj *buffer);
-    void DeleteRedundantMemoryBlock();
-    MemoryPool();
-    ~MemoryPool();
-private:
-    obj *NewBuffer();
-
-private:
-    Queue<obj *> *buffer_queue_;
-    Queue<char *> *memory_block_queue_;
-    size_t memory_block_unit_count_;
-
-    size_t free_buffer_count_;
-    void *free_buffer_head_;
-};
-
-
-template<class obj, size_t pool_size>
-MemoryPool<obj, pool_size>::MemoryPool() {
-    buffer_queue_ = new Queue<obj *>();
-    memory_block_queue_ = new Queue<char *>();
-    memory_block_unit_count_ = -1;
-
-    free_buffer_count_ = 0;
-    free_buffer_head_ = nullptr;
-}
-
-template<class obj,size_t pool_size>
-MemoryPool<obj, pool_size>::~MemoryPool() {
-    // if(buffer_queue_->size() + memory_block_unit_count_ + 1 != memory_block_queue_->size() * pool_size) {
-    //     throw ("Memory leak exists");
-    // }
-    while(memory_block_queue_->size()) {
-        free((void *)memory_block_queue_->poll());
-    }
-    delete buffer_queue_;
-    delete memory_block_queue_;
-}
-
-
-template<class obj,size_t pool_size>
-obj *MemoryPool<obj, pool_size>::NewBuffer() {
-    if(memory_block_unit_count_ == -1) {
-        //alloc a new memory block
-        char *buffer_ptr = (char *)malloc(sizeof(obj) * pool_size);
-        memory_block_queue_->offer(buffer_ptr);
-        memory_block_unit_count_ = pool_size - 1;
-    }
-    return (obj *)((memory_block_queue_->Back()) + (memory_block_unit_count_--) * sizeof(obj));
-}
-
-template<class obj,size_t pool_size>
-obj *MemoryPool<obj, pool_size>::New() {
-    if(buffer_queue_->size() == 0) {
-        return new(NewBuffer())obj();
-    }
-    return new(buffer_queue_->poll())obj();
-}
-
-template<class obj,size_t pool_size>
-obj *MemoryPool<obj, pool_size>::New2() {
-    if(free_buffer_count_ == 0) {
-        return new(NewBuffer())obj();
-    }
-    obj *buffer = (obj*)free_buffer_head_;
-    memcpy(&free_buffer_head_, free_buffer_head_, sizeof(free_buffer_head_));
-    free_buffer_count_--;
-    return new(buffer)obj();
-}
-
-
-template<class obj,size_t pool_size>
-bool MemoryPool<obj, pool_size>::Delete(obj *buffer) {
-    buffer->~obj();
-    buffer_queue_->offer(buffer);
-    return buffer_queue_->size() > (memory_block_queue_->size() * pool_size >> 2);
-}
-
-template<class obj,size_t pool_size>
-bool MemoryPool<obj, pool_size>::Delete2(obj *buffer) {
-    puts("asd");
-    buffer->~obj();
-    *((long long *)buffer) = (long long)free_buffer_head_;
-   // memcpy(buffer, &free_buffer_head_, sizeof(free_buffer_head_));
-    puts("adasda");
-    free_buffer_head_ = buffer;
-    return ++free_buffer_count_ > (memory_block_queue_->size() * pool_size >> 2);
-}
-
-
-template<class obj,size_t pool_size>
-void MemoryPool<obj, pool_size>::DeleteRedundantMemoryBlock() {
-    while(memory_block_unit_count_ != -1) {
-        obj *buffer =(obj *)((*memory_block_queue_->End()) + (memory_block_unit_count_--) * sizeof(obj));
-        buffer_queue_->offer(buffer);
-    }
-    std::sort(buffer_queue_->Begin(), buffer_queue_->End());
-    size_t size = memory_block_queue_->size();
-    size_t need_erase_size = size >> 1;
-    while(size && need_erase_size != 0) {
-        size--;
-        
-    }
-    //TODO::binary search
-}
-
-
-
-
-
-
-
-
-
+*/
 
 
 // template<size_t BlockSize>

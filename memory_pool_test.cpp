@@ -15,10 +15,10 @@ int myrand(int l,int r){
 }
 
 class Buffer{
-    char data[4096];
+    char data[32];
 public:
     Buffer(){}
-    ~Buffer(){printf("destory\n");}
+    ~Buffer(){}
 };
 
 bool IsMalloc() {
@@ -26,7 +26,7 @@ bool IsMalloc() {
     return op > 2;
 }
 
-const int max_time = 1000000;
+const int max_time = 10000000;
 
 int main(int argc, char **argv)
 {
@@ -37,39 +37,40 @@ int main(int argc, char **argv)
     
     if(argc > 1) {
 
-        MemoryPool<Buffer,1024>* memory_pool = new MemoryPool<Buffer,1024>();
+        MemoryPool<Buffer, 256>* memory_pool = new MemoryPool<Buffer, 256>();
         size_t malloc_count = 0;
         size_t free_count = 0;
         // for(int i = 0; i < max_time; i++) {
-        //     q.push(memory_pool->construct());
+        //     q.push(memory_pool->New());
         // }
+        // int cout = 0;
         // while(!q.empty()) {
-        //     memory_pool->Free(q.front());
+        //     memory_pool->Delete2(q.front());
+        //     if(++cout % 10000 ==0) printf("%d\n",cout);
         //     q.pop();
         // }
+        
         //Buffer *tmp = (Buffer *)malloc(sizeof(Buffer));
         //memory_pool->Delete2(tmp);
         gettimeofday(&start, 0);
         for(int i = 0; i < max_time;i++) {
-            printf("i\n");
             if(IsMalloc()) {
-                Buffer * new_f = memory_pool->New2();
+                Buffer * new_f = memory_pool->New();
                 q.push(new_f);
                 malloc_count++;
             }else if(q.size()){
-                printf("cd de\n");
-                memory_pool->Delete2(q.front());
+                memory_pool->Delete(q.front());
                 q.pop();
                 free_count++;
             }
         }
         gettimeofday(&end, 0);
         long long t1 = 1000000ll*(end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
-        memory_pool->DeleteRedundantMemoryBlock();
+       // memory_pool->DeleteRedundantMemoryBlock();
         printf("malloc_count= %lu,free_count = %lu,time =%lld\n",malloc_count,free_count,t1);
         
         while(!q.empty()) {
-            memory_pool->Delete2(q.front());
+            memory_pool->Delete(q.front());
             q.pop();
         }
         delete memory_pool;
