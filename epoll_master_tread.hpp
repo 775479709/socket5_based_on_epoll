@@ -1,12 +1,11 @@
 #ifndef EPOLLMASTERTHREAD_H
 #define EPOLLMASTERTHREAD_H
 #include "epoll_common.hpp"
-#include "epoll_work_thread.hpp"
 
 
 
 
-template<class EventHander, class ClientData>
+template<class WorkThread>
 class EpollMasterThread{
 private:
     class WorkThreadInfo{
@@ -14,7 +13,7 @@ private:
         size_t client_num;
         int master_read_pipe_fd;
         int master_write_pipe_fd;
-        EpollWorkThread<class EventHander, class ClientData> *epoll_work_thread;
+        WorkThread *epoll_work_thread;
         WorkThreadInfo() : client_num(0), epoll_work_thread(nullptr){}
     };
 
@@ -39,8 +38,8 @@ private:
 
 
 
-template<class EventHander, class ClientData>
-EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_thread_num){
+template<class WorkThread>
+EpollMasterThread<WorkThread>::EpollMasterThread(const char *ip, int port, size_t work_thread_num){
     work_thread_num_ = work_thread_num;
     listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     assert(listen_fd_ > 0);
@@ -67,7 +66,7 @@ EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_threa
     work_thread_info_ = new WorkThreadInfo[work_thread_num];
     threads_ = new pthread_t[work_thread_num];
     for(size_t i = 0; i < work_thread_num; i++){
-        work_thread_info_[i].epoll_work_thread = new EpollWorkThread<EventHander, ClientData>();
+        work_thread_info_[i].epoll_work_thread = new WorkThread();
         int fds1[2], fds2[2];
         if(pipe(fds1) == -1 || pipe(fds2) == -1){
             std::cout << "pipe error" << std::endl;
@@ -82,7 +81,7 @@ EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_threa
         work_thread_info_[i].epoll_work_thread->work_read_pipe_fd = fds2[0];
         work_thread_info_[i].epoll_work_thread->work_write_pipe_fd = fds1[1];
         work_thread_info_[i].epoll_work_thread->thread_idx = i;
-        if(pthread_create(threads_ + i, NULL, EpollWorkThread::StartThread, work_thread_info_[i].epoll_work_thread) != 0) {
+        if(pthread_create(threads_ + i, NULL, WorkThread::StartThread, work_thread_info_[i].epoll_work_thread) != 0) {
             std::cout << "create thread error!" << std::endl;
             throw std::exception();
         }
@@ -94,13 +93,13 @@ EpollMasterThread::EpollMasterThread(const char *ip, int port, size_t work_threa
     Run();
 }
 
-template<class EventHander, class ClientData>
-EpollMasterThread::~EpollMasterThread(){
+template<class WorkThread>
+EpollMasterThread<WorkThread>::~EpollMasterThread(){
 
 }
 
-template<class EventHander, class ClientData>
-void EpollMasterThread::Run(){
+template<class WorkThread>
+void EpollMasterThread<WorkThread>::Run(){
     std::cout<< "master thread is running!" << std::endl;
     events_ = new std::vector<epoll_event>(8);
     size_t current_thread_index = 0;
