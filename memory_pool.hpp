@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <algorithm>
-#include <set>
 
 template <class obj, size_t pool_size>
 class MemoryPool
@@ -219,7 +218,6 @@ void MemoryPool<obj, pool_size>::DeleteRedundantMemoryBlock()
     memory_block_count_ -= delete_memory_block_count;
     clean_count_ = 0;
     free(memory_block_addr);
-    test();
 }
 
 template <class obj, size_t pool_size>
@@ -245,7 +243,8 @@ void MemoryPool<obj, pool_size>::test()
 
 /*
 template<class T>
-class Queue {
+class Queue 
+{
 public:
     Queue(){
         capacity_ = 128 * 128;
