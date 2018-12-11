@@ -101,55 +101,10 @@ void EpollWorkThread::Run()
 
 void EpollWorkThread::CloseClient(Client *client)
 {
-    RemoveFd(epoll_fd_, client->clinet_fd);
     HandDisconnect(client);
+    RemoveFd(epoll_fd_, client->clinet_fd);
+    close(client->clinet_fd);
     client_pool_->Delete(client);
-}
-//TODO:Readn while size == have_read_size need read again
-int EpollWorkThread::Readn(int client_fd, char *buf, size_t size)
-{
-    size_t have_read_size = 0;
-    int ret = 0;
-    while (have_read_size < size)
-    {
-        ret = read(client_fd, buf + have_read_size, size - have_read_size);
-        if (ret <= 0)
-        {
-            if (ret == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-            {
-                return static_cast<int>(have_read_size);
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        have_read_size += ret;
-    }
-    return static_cast<int>(have_read_size);
-}
-
-int EpollWorkThread::Writen(int clinet_fd, char *buf, size_t size)
-{
-    size_t have_write_size = 0;
-    int ret = 0;
-    while (have_write_size < size)
-    {
-        ret = write(clinet_fd, buf + have_write_size, size - have_write_size);
-        if (ret <= 0)
-        {
-            if (ret == -1 && errno == EAGAIN)
-            {
-                return static_cast<int>(have_write_size);
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        have_write_size += ret;
-    }
-    return static_cast<int>(have_write_size);
 }
 
 void EpollWorkThread::FromMaster()
@@ -182,5 +137,54 @@ void EpollWorkThread::FromMaster()
         }
     }
 }
+
+// //TODO:Readn while size == have_read_size need read again
+// int EpollWorkThread::Readn(int client_fd, char *buf, size_t size)
+// {
+//     size_t have_read_size = 0;
+//     int ret = 0;
+//     while (have_read_size < size)
+//     {
+//         ret = read(client_fd, buf + have_read_size, size - have_read_size);
+//         if (ret <= 0)
+//         {
+//             if (ret == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+//             {
+//                 return static_cast<int>(have_read_size);
+//             }
+//             else
+//             {
+//                 return -1;
+//             }
+//         }
+//         have_read_size += ret;
+//     }
+//     return static_cast<int>(have_read_size);
+// }
+
+// int EpollWorkThread::Writen(int clinet_fd, char *buf, size_t size)
+// {
+//     size_t have_write_size = 0;
+//     int ret = 0;
+//     while (have_write_size < size)
+//     {
+//         ret = write(clinet_fd, buf + have_write_size, size - have_write_size);
+//         if (ret <= 0)
+//         {
+//             if (ret == -1 && errno == EAGAIN)
+//             {
+//                 return static_cast<int>(have_write_size);
+//             }
+//             else
+//             {
+//                 return -1;
+//             }
+//         }
+//         have_write_size += ret;
+//     }
+//     return static_cast<int>(have_write_size);
+// }
+
+
 
 #endif
