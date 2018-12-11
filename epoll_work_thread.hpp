@@ -43,7 +43,6 @@ class EpollWorkThread
     EventHander *event_hander_;
 };
 
-template <class EventHander, class ClientData>
 void *EpollWorkThread::StartThread(void *instance)
 {
     EpollWorkThread<EventHander, ClientData> *work_thread = (EpollWorkThread<EventHander, ClientData> *)instance;
@@ -51,7 +50,6 @@ void *EpollWorkThread::StartThread(void *instance)
     return work_thread;
 }
 
-template <class EventHander, class ClientData>
 void EpollWorkThread::Run()
 {
     std::cout << "work thread:" << thread_idx << " is running!" << std::endl;
@@ -77,7 +75,11 @@ void EpollWorkThread::Run()
         for (size_t i = 0; i < event_num; i++)
         {
             Client *client = (Client *)(*events_)[i].data.ptr;
-
+            if ((*events_)[i].events & EPOLLHUP)
+            {
+                CloseClient(client);
+                continue;
+            }
             if ((*events_)[i].events & EPOLLIN)
             {
                 if (client == NULL)
@@ -89,13 +91,9 @@ void EpollWorkThread::Run()
                     HaveReadEvent(client);
                 }
             }
-            else if ((*events_)[i].events & EPOLLOUT)
+            if ((*events_)[i].events & EPOLLOUT)
             {
                 HandWriteEvent(client);
-            }
-            else if ((*events_)[i].events & (EPOLLERR | EPOLLHUP))
-            {
-                CloseClient(client);
             }
         }
     }

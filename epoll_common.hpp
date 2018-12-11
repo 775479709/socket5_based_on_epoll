@@ -31,7 +31,7 @@ void SetNonblocking(int fd) {
 void AddFd(int epoll_fd, int fd, void *ptr){
     epoll_event event;
     event.data.ptr = ptr;
-    event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;;
+    event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event);
     SetNonblocking(fd);
 }
