@@ -1,5 +1,5 @@
-#ifndef EPOLLMASTERTHREAD_H
-#define EPOLLMASTERTHREAD_H
+#ifndef EPOLLMASTERTHREAD_HPP
+#define EPOLLMASTERTHREAD_HPP
 #include "epoll_common.hpp"
 
 

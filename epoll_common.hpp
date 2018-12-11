@@ -1,5 +1,5 @@
-#ifndef EPOLLCOMMON_H
-#define EPOLLCOMMON_H
+#ifndef EPOLLCOMMON_HPP
+#define EPOLLCOMMON_HPP
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include<sys/uio.h>
 
 //#define NDEBUG
 #include <assert.h>

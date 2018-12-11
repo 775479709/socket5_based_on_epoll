@@ -1,5 +1,5 @@
-#ifndef EPOLLWORKTHREAD_H
-#define EPOLLWORKTHREAD_H
+#ifndef EPOLLWORKTHREAD_HPP
+#define EPOLLWORKTHREAD_HPP
 #include "epoll_common.hpp"
 #include "memory_pool.hpp"
 
@@ -39,13 +39,12 @@ class EpollWorkThread
     int epoll_fd_;
     bool is_stop_;
     std::vector<epoll_event> *events_;
-    MemoryPool<Client> *client_pool_;
-    EventHander *event_hander_;
+    MemoryPool<Client, 1024> *client_pool_;
 };
 
 void *EpollWorkThread::StartThread(void *instance)
 {
-    EpollWorkThread<EventHander, ClientData> *work_thread = (EpollWorkThread<EventHander, ClientData> *)instance;
+    EpollWorkThread *work_thread = (EpollWorkThread *)instance;
     work_thread->Run();
     return work_thread;
 }
@@ -53,8 +52,7 @@ void *EpollWorkThread::StartThread(void *instance)
 void EpollWorkThread::Run()
 {
     std::cout << "work thread:" << thread_idx << " is running!" << std::endl;
-    client_pool_ = new MemoryPool<Client>();
-    event_hander_ = new EventHander();
+    client_pool_ = new MemoryPool<Client, 1024>();
 
     epoll_fd_ = epoll_create(5);
     events_ = new std::vector<epoll_event>(64);
@@ -80,6 +78,10 @@ void EpollWorkThread::Run()
                 CloseClient(client);
                 continue;
             }
+            if ((*events_)[i].events & EPOLLOUT)
+            {
+                HandWriteEvent(client);
+            }
             if ((*events_)[i].events & EPOLLIN)
             {
                 if (client == NULL)
@@ -88,13 +90,10 @@ void EpollWorkThread::Run()
                 }
                 else
                 {
-                    HaveReadEvent(client);
+                    HandReadEvent(client);
                 }
             }
-            if ((*events_)[i].events & EPOLLOUT)
-            {
-                HandWriteEvent(client);
-            }
+            
         }
     }
 }
