@@ -19,8 +19,7 @@ class EpollWorkThread
     static void *StartThread(void *instance);
     void Run();
     void CloseClient(Client *client);
-    int Readn(int client_fd, char *buf, size_t size);
-    int Writen(int client_fd, char *buf, size_t size);
+
 
     virtual void HandAcceptCompleted(Client *client) = 0;
     virtual void HandReadEvent(Client *client) = 0;
@@ -31,12 +30,12 @@ class EpollWorkThread
     int work_read_pipe_fd;
     int work_write_pipe_fd;
     int thread_idx;
+    int epoll_fd;
 
   private:
     void FromMaster();
 
   private:
-    int epoll_fd_;
     bool is_stop_;
     std::vector<epoll_event> *events_;
     MemoryPool<Client, 1024> *client_pool_;
@@ -54,12 +53,12 @@ void EpollWorkThread::Run()
     std::cout << "work thread:" << thread_idx << " is running!" << std::endl;
     client_pool_ = new MemoryPool<Client, 1024>();
 
-    epoll_fd_ = epoll_create(5);
+    epoll_fd = epoll_create(5);
     events_ = new std::vector<epoll_event>(64);
-    AddFd(epoll_fd_, work_read_pipe_fd, (void *)NULL);
+    AddFd(epoll_fd, work_read_pipe_fd, (void *)NULL);
     while (true)
     {
-        int event_num = epoll_wait(epoll_fd_, &(*events_->begin()), static_cast<int>(events_->size()), 1);
+        int event_num = epoll_wait(epoll_fd, &(*events_->begin()), static_cast<int>(events_->size()), 1);
         if (event_num < 0 && errno != EINTR)
         {
             std::cout << "epoll failure" << std::endl;
@@ -101,7 +100,7 @@ void EpollWorkThread::Run()
 void EpollWorkThread::CloseClient(Client *client)
 {
     HandDisconnect(client);
-    RemoveFd(epoll_fd_, client->clinet_fd);
+    RemoveFd(epoll_fd, client->clinet_fd);
     close(client->clinet_fd);
     client_pool_->Delete(client);
 }
@@ -130,7 +129,7 @@ void EpollWorkThread::FromMaster()
             socklen_t peer_len;
             getpeername(client_fd, (struct sockaddr *)&(client->client_address), &peer_len);
 
-            AddFd(epoll_fd_, client_fd, (void *)client);
+            AddFd(epoll_fd, client_fd, (void *)client);
             HandAcceptCompleted(client);
             size = 0;
         }
