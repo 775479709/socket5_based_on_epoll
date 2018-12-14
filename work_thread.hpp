@@ -32,9 +32,9 @@ public:
     WorkThread();
     ~WorkThread();
     
-    void ToBuffer(char *buf, size_t size);
-    void DataToClient(ClientInfo *client_info, char *buf, size_t size);
-    void DataToClient(ClientInfo *client_info, Buffer *buffer, size_t size);
+    Buffer *ToBuffer(char *buf, size_t size);
+    bool DataToClient(ClientInfo *client_info, char *buf, size_t size);
+    bool DataToClient(ClientInfo *client_info, Buffer *buffer, size_t size);
     void DisconnectClient(ClientInfo *client_info);
 
     virtual void NewClient(ClientInfo *client_info) = 0;
@@ -136,6 +136,9 @@ void WorkThread::AddBufferBack(ClientInfo *client_info, bool is_write_buffer, Bu
 }
 
 void WorkThread::HandAcceptCompleted(Client *client) {
+    //test
+    puts("HandAcceptCompleted::");
+    //test
     ClientInfo *client_info = client_info_pool_->New();
     client_info->client = client;
     client->data = (void *)client_info;
@@ -143,7 +146,13 @@ void WorkThread::HandAcceptCompleted(Client *client) {
 }
 
 void WorkThread::HandReadEvent(Client *client) {
+    //test
+    puts("HandReadEvent::");
+    //test
     int len = readv(client->clinet_fd, read_iov_, READ_BUFFER_NUM);
+    //test
+    printf("readv  len: %d\n",len);
+    //test
     ClientInfo *client_info = (ClientInfo *)client->data;
     if(len <= 0) {
         DisconnectClient(client_info);
@@ -219,7 +228,7 @@ bool WorkThread::Writev(ClientInfo *client_info){
             buffer_pool_->Delete(i);
         }
         DisconnectClient(client_info);
-        return;
+        return false;
     }
     size_t sum_size = 0;
     while(sum_size + buffer->use_size <= len) {
@@ -249,14 +258,62 @@ bool WorkThread::Writev(ClientInfo *client_info){
     }
 } 
 
-void WorkThread::DataToClient(ClientInfo *client_info, Buffer *buffer, size_t size) {
+bool WorkThread::DataToClient(ClientInfo *client_info, Buffer *buffer, size_t size) {
     bool is_empty = client_info->write_buffer == nullptr;
     AddBufferBack(client_info, 1, buffer, size);
     if(is_empty) {
-        Writev(client_info);
+        if(Writev(client_info)) {
+            return true;
+        }
     }
+    return false;
 }
 
+WorkThread::Buffer *WorkThread::ToBuffer(char *buf, size_t size) {
+    if(size == 0) {
+        return nullptr;
+    }
+    Buffer *head = nullptr;
+    Buffer *pre_buffer = nullptr;
+    size_t cpy_size = 0;
+    while(cpy_size < size) {
+        if(pre_buffer == nullptr) {
+            head = buffer_pool_->New();
+            pre_buffer = head;
+        }
+        if(size - cpy_size > BUFFER_SIZE) {
+            memcpy(pre_buffer->buffer_head, buf + cpy_size, BUFFER_SIZE);
+            cpy_size += BUFFER_SIZE;
+        } else {
+            memcpy(pre_buffer->buffer_head, buf + cpy_size, size - cpy_size);
+            cpy_size = size;
+        }
+    }
+    return head;
+}
 
+bool WorkThread::DataToClient(ClientInfo *client_info, char *buf, size_t size) {
+    Buffer *buffer = ToBuffer(buf, size);
+    return DataToClient(client_info, buf, size);
+}
+
+void WorkThread::DisconnectClient(ClientInfo *client_info) {
+    ClientLeave(client_info);
+    while(client_info->read_buffer != nullptr) {
+        Buffer *temp = client_info->read_buffer;
+        client_info->read_buffer = client_info->read_buffer->next;
+        buffer_pool_->Delete(temp);
+    }
+    while(client_info->write_buffer != nullptr) {
+        Buffer *temp = client_info->write_buffer;
+        client_info->write_buffer = client_info->write_buffer->next;
+        buffer_pool_->Delete(temp);
+    }
+    client_info_pool_->Delete(client_info);
+}
+
+void WorkThread::HandDisconnect(Client *client){
+    DisconnectClient((ClientInfo *)client->data);
+}
 
 #endif
