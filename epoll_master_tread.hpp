@@ -45,7 +45,8 @@ EpollMasterThread<WorkThread>::EpollMasterThread(const char *ip, int port, size_
     assert(listen_fd_ > 0);
     bzero(&local_address_, sizeof(local_address_)); 
     struct linger tmp = {1, 0};
-    setsockopt(listen_fd_, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
+    //TODO:check argv:SO_REUSEADDR
+    setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp));
 
     int ret = 0;
     local_address_.sin_family = AF_INET;
@@ -95,7 +96,12 @@ EpollMasterThread<WorkThread>::EpollMasterThread(const char *ip, int port, size_
 
 template<class WorkThread>
 EpollMasterThread<WorkThread>::~EpollMasterThread(){
-
+    delete events_;
+    delete work_thread_info_;
+    delete threads_;
+    close(epoll_fd_);
+    close(listen_fd_);
+    //TODO: Check sub thread whether exit.
 }
 
 template<class WorkThread>

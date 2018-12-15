@@ -41,6 +41,14 @@ class EpollWorkThread
     MemoryPool<Client, 1024> *client_pool_;
 };
 
+EpollWorkThread::~EpollWorkThread() {
+    delete events_;
+    delete client_pool_;
+    close(epoll_fd);
+    close(work_read_pipe_fd);
+    close(work_write_pipe_fd);
+}
+
 void *EpollWorkThread::StartThread(void *instance)
 {
     EpollWorkThread *work_thread = (EpollWorkThread *)instance;

@@ -30,7 +30,7 @@
 
 #define    MAXLINE        4096
 #define    LISTENQ        20
-#define    SERV_PORT    9877
+#define    SERV_PORT    1023
 
 void SetNonblocking(int fd) {
     int old_option = fcntl(fd, F_GETFL);

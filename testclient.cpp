@@ -1,10 +1,40 @@
-#include <stdio.h>
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include<stdio.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <stdlib.h>
-#include <string.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <vector>
+#include <ext/hash_map>
+#include <iostream>
+#include <sys/epoll.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include<sys/uio.h>
+#include <string>
+
+
+void SetNonblocking(int fd) {
+    int old_option = fcntl(fd, F_GETFL);
+    int new_option = old_option | O_NONBLOCK;
+    fcntl(fd,F_SETFL, new_option);
+}
 
 int main(int argc, char *argv[])
 {
@@ -19,28 +49,38 @@ int main(int argc, char *argv[])
     struct sockaddr_in server;    
     memset( &server, 0, sizeof( struct sockaddr_in ) );
     server.sin_family = AF_INET;
-    server.sin_port = htons (9877);
+    server.sin_port = htons (1024);
     server.sin_addr.s_addr = inet_addr( "127.0.0.1" );
-    
+    SetNonblocking(sockfd);
     int res = -1;    
     res = connect( sockfd, (struct sockaddr*)&server, sizeof( server ) );
-    if( -1 == res ){
-        perror( "sock connect" );
-        exit( -1 );
+    // if( -1 == res ){
+    //     perror( "sock connect" );
+    //     exit( -1 );
+    // }
+    printf("connect:res = %d\n",res);
+    int count = 0;
+    while(1) {
+        std::string x = "hello world";
+        std::string tmp = std::to_string(++count) + " " + x;
+        res = write(sockfd, tmp.c_str(), tmp.size());
+        if(res == -1) {
+            sleep(1);
+        }
+        printf("count = %d ,write ok!:%d\n",count,res);
+        char buf[101];
+        int len =read(sockfd, buf, 100);
+        printf("len = %d\n",len);
+        if(len != -1)buf[len] = 0;
+        else {
+            continue;
+        }
+        
+        printf("len = %d, data = %s\n",len, buf);
+        // if(count > 30000)
+        // sleep(1);
+        
     }
-    printf("res = %d\n",res);
-
-    char buf[1024 * 1024];
-    memset(buf,1,sizeof(buf));
-    res = write(sockfd, buf, 1024);
-    printf("write pre\n");
-    //sleep(15);
-    for(int i = 0; i < 10;i++){
-        res = write(sockfd, buf, 1024 * 1024);
-        printf("write ok!:%d\n",res);
-    }
-    
-    while(1);
 
     close( sockfd );
 

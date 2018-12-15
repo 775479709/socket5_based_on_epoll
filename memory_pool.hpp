@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <algorithm>
-
+#include <set>
 template <class obj, size_t pool_size>
 class MemoryPool
 {
@@ -24,6 +24,7 @@ class MemoryPool
 
     //test
     void test();
+    std::set<obj *> st;
     //test
 
   private:
@@ -93,6 +94,7 @@ obj *MemoryPool<obj, pool_size>::NewBuffer()
 template <class obj, size_t pool_size>
 obj *MemoryPool<obj, pool_size>::New()
 {
+    //puts("memory_pool::do new");
     if (free_buffer_count_ == 0)
     {
         return new (NewBuffer()) obj();
@@ -101,12 +103,27 @@ obj *MemoryPool<obj, pool_size>::New()
     memcpy(&free_buffer_head_, free_buffer_head_, sizeof(free_buffer_head_));
     --free_buffer_count_;
     --clean_count_;
+
+    //test
+    st.erase(buffer);
+    //test
+
     return new (buffer) obj();
 }
 
 template <class obj, size_t pool_size>
 void MemoryPool<obj, pool_size>::Delete(obj *buffer)
 {
+    puts("memory_pool::do delete");
+    
+    //test
+    if(st.find(buffer) != st.end()) {
+        perror("buffer have been delete!!");
+        throw "buffer have been delete!!";
+    }
+    st.insert(buffer);
+    //test
+
     buffer->~obj();
     memcpy(buffer, &free_buffer_head_, sizeof(free_buffer_head_));
     free_buffer_head_ = buffer;
