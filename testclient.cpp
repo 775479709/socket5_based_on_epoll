@@ -60,23 +60,32 @@ int main(int argc, char *argv[])
     // }
     printf("connect:res = %d\n",res);
     int count = 0;
+    int len;
+    char buf[101000];
     while(1) {
         std::string x = "hello world";
         std::string tmp = std::to_string(++count) + " " + x;
         res = write(sockfd, tmp.c_str(), tmp.size());
         if(res == -1) {
+            if(len == -2) {
+                len =read(sockfd, buf, 100000);
+                printf("len == -2,len = %d\n",len);
+            }
             sleep(1);
         }
         printf("count = %d ,write ok!:%d\n",count,res);
-        char buf[101];
-        int len =read(sockfd, buf, 100);
-        printf("len = %d\n",len);
-        if(len != -1)buf[len] = 0;
-        else {
-            continue;
+        
+        len = -2;
+        if(count % 10000 == 0) {
+            len =read(sockfd, buf, 100);
+            printf("len = %d\n",len);
+            if(len != -1)buf[len] = 0;
+            else {
+                continue;
+            }
         }
         
-        printf("len = %d, data = %s\n",len, buf);
+        printf("len = %d, data =\n",len);
         // if(count > 30000)
         // sleep(1);
         

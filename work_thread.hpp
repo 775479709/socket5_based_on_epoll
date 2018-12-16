@@ -155,12 +155,12 @@ void WorkThread::AddBufferBack(ClientInfo *client_info, bool is_write_buffer, Bu
         MergeBuffer(back_buffer);
     }
     client_buffer_size += size;
-    printf("AddBufferBack :size =%d\n",client_buffer_size);
+    //printf("AddBufferBack :size =%d\n",client_buffer_size);
 }
 
 void WorkThread::HandAcceptCompleted(Client *client) {
     //test
-    puts("HandAcceptCompleted::");
+    //puts("HandAcceptCompleted::");
     //test
     ClientInfo *client_info = client_info_pool_->New();
     client_info->client = client;
@@ -170,13 +170,13 @@ void WorkThread::HandAcceptCompleted(Client *client) {
 
 void WorkThread::HandReadEvent(Client *client) {
     //test
-    puts("HandReadEvent::");
+    //puts("HandReadEvent::");
     //test
 
     int len = readv(client->clinet_fd, read_iov_, READ_BUFFER_NUM);
 
     //test
-    printf("rev len = %d\n", len);
+    //printf("rev len = %d\n", len);
     // for(int i = 0; i < 16;i++) {
     //     printf("%d : %u\n",i,read_iov_[i].iov_len);
     // }
@@ -189,7 +189,7 @@ void WorkThread::HandReadEvent(Client *client) {
     }
     size_t use_buffer_count = len / BUFFER_SIZE + (len % BUFFER_SIZE != 0);
 
-    printf("use_buffer_count = %u\n",use_buffer_count);
+    //printf("use_buffer_count = %u\n",use_buffer_count);
 
     Buffer *remaining_buffer = read_iov_head_;
     Buffer *last_remaining_buffer = nullptr;
@@ -222,7 +222,7 @@ void WorkThread::HandReadEvent(Client *client) {
     
     pre_buf->next = remaining_buffer;
     read_iov_head_ = head_buf;
-    if(len == BUFFER_SIZE) {
+    if(len == BUFFER_SIZE * READ_BUFFER_NUM) {
         ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLIN, (void *)client_info->client);
     }
     DataFromClient(client_info);
@@ -243,7 +243,7 @@ bool WorkThread::Writev(ClientInfo *client_info){
     Buffer *buffer = client_info->write_buffer;
     size_t size = client_info->write_buffer_size;
     
-    printf("size = %d\n",size);
+    //printf("size = %d\n",size);
 
 
     if(size != 0 && buffer == nullptr) {
@@ -278,7 +278,7 @@ bool WorkThread::Writev(ClientInfo *client_info){
 
     int len = writev(client_info->client->clinet_fd, write_iov_, count);
 
-    printf("writev len = %d\n",len);
+    //printf("writev len = %d\n",len);
 
     if(len == -1 && errno == EINTR) {
         len = 0;
@@ -313,21 +313,17 @@ bool WorkThread::Writev(ClientInfo *client_info){
     client_info->ResetBuffer(1);
     if(len < all_buffer_size) {
         AddBufferBack(client_info, 1, buffer, all_buffer_size - len);
-        puts("len < size");
+        //puts("len < size");
         //ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLOUT, (void *)client_info->client);
         return false;
     } else {
         //ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLIN, (void *)client_info->client);
-        puts("return true");
+        //puts("return true");
         return true;
     }
 } 
 
 bool WorkThread::DataToClient(ClientInfo *client_info, Buffer *buffer, size_t size) {
-    // if(size > WRITE_BUFFER_NUM * BUFFER_SIZE) {
-    //     perror("DataToClient:: size is too large!!");
-    //     throw "DataToClient:: size is too large!!";
-    // }
     bool is_empty = client_info->write_buffer == nullptr;
     AddBufferBack(client_info, 1, buffer, size);
     if(is_empty) {
@@ -341,7 +337,7 @@ bool WorkThread::DataToClient(ClientInfo *client_info, Buffer *buffer, size_t si
 }
 
 WorkThread::Buffer *WorkThread::ToBuffer(char *buf, size_t size) {
-    printf("ToBuffer:: size = %u\n",size);
+    //printf("ToBuffer:: size = %u\n",size);
     if(size == 0) {
         return nullptr;
     }

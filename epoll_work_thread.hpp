@@ -14,7 +14,7 @@ class EpollWorkThread
     };
 
   public:
-    EpollWorkThread() : is_stop_(false), events_(nullptr), client_pool_(nullptr) {}
+    EpollWorkThread() : is_stop(false), events_(nullptr), client_pool_(nullptr) {}
     ~EpollWorkThread();
     static void *StartThread(void *instance);
     void Run();
@@ -31,22 +31,25 @@ class EpollWorkThread
     int work_write_pipe_fd;
     int thread_idx;
     int epoll_fd;
+    bool is_stop;
 
   private:
     void FromMaster();
 
   private:
-    bool is_stop_;
+    
     std::vector<epoll_event> *events_;
     MemoryPool<Client, 1024> *client_pool_;
 };
 
 EpollWorkThread::~EpollWorkThread() {
-    delete events_;
-    delete client_pool_;
+    printf("delete work %d thread\n",thread_idx);
     close(epoll_fd);
     close(work_read_pipe_fd);
     close(work_write_pipe_fd);
+    delete events_;
+    delete client_pool_;
+    
 }
 
 void *EpollWorkThread::StartThread(void *instance)
@@ -94,6 +97,9 @@ void EpollWorkThread::Run()
                 if (client == NULL)
                 {
                     FromMaster();
+                    if(is_stop) {
+                        break;
+                    }
                 }
                 else
                 {
@@ -103,6 +109,7 @@ void EpollWorkThread::Run()
             
         }
     }
+    printf("work thread %d is eixt!\n",thread_idx);
 }
 
 void EpollWorkThread::CloseClient(Client *client)
@@ -130,6 +137,10 @@ void EpollWorkThread::FromMaster()
         {
             int client_fd;
             memcpy(&client_fd, buf, 4);
+            if(client_fd == 0) {
+                is_stop = true;
+                break;
+            }
             SetNonblocking(client_fd);
 
             Client *client = client_pool_->New();

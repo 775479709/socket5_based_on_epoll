@@ -55,7 +55,8 @@ MemoryPool<obj, pool_size>::~MemoryPool()
 {
     if (free_buffer_count_ + memory_block_unit_count_ != memory_block_count_ * pool_size)
     {
-        perror("MemoryPool:: buffer no delete exists");
+        printf("MemoryPool:: buffer no delete exists,buffer size = %u\n",sizeof(obj));
+        throw "MemoryPool:: buffer no delete exists";
     }
     while (memory_block_head_ != nullptr)
     {
