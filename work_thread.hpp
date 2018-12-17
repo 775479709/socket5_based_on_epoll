@@ -174,6 +174,12 @@ void WorkThread::HandReadEvent(Client *client) {
     //test
 
     int len = readv(client->clinet_fd, read_iov_, READ_BUFFER_NUM);
+    int temp =1;
+    //int temp = readv(client->clinet_fd, read_iov_, READ_BUFFER_NUM);
+    sleep(1);
+    if((temp == -1 && errno != EAGAIN) || temp ==0) {
+        printf("temp = %d , len = %d is close???\n",temp,len);
+    }
 
     //test
     //printf("rev len = %d\n", len);
@@ -184,6 +190,9 @@ void WorkThread::HandReadEvent(Client *client) {
 
     ClientInfo *client_info = (ClientInfo *)client->data;
     if(len <= 0) {
+        if(len == 0) {
+            printf("len ==0\n");
+        }
         DisconnectClient(client_info);
         return;
     }
@@ -377,14 +386,14 @@ bool WorkThread::DataToClient(ClientInfo *client_info, char *buf, size_t size) {
 }
 
 void WorkThread::DisconnectClient(ClientInfo *client_info) {
-    ClientLeave(client_info);
+    CloseClient(client_info->client);
     CleanClientBuffer(client_info, 0);
     CleanClientBuffer(client_info, 1);
     client_info_pool_->Delete(client_info);
 }
 
 void WorkThread::HandDisconnect(Client *client){
-    DisconnectClient((ClientInfo *)client->data);
+    ClientLeave((ClientInfo *)client->data);
 }
 
 #endif

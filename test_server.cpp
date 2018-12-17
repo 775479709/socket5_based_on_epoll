@@ -21,7 +21,7 @@ public:
         }
         CleanClientBuffer(client_info, 0);
         //puts("DataFromClient::send data to client");
-        bool is = DataToClient(client_info, buf, size);
+        //bool is = DataToClient(client_info, buf, size);
         delete buf;
         //printf("count = %d,DataFromClient::send data to client ok!!!\n",count++);
     }

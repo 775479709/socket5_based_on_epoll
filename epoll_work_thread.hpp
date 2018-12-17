@@ -85,6 +85,7 @@ void EpollWorkThread::Run()
             Client *client = (Client *)(*events_)[i].data.ptr;
             if ((*events_)[i].events & EPOLLHUP)
             {
+                printf("hup\n");
                 CloseClient(client);
                 continue;
             }
