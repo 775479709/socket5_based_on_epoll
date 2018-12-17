@@ -328,6 +328,7 @@ bool WorkThread::DataToClient(ClientInfo *client_info, Buffer *buffer, size_t si
     AddBufferBack(client_info, 1, buffer, size);
     if(is_empty) {
         if(Writev(client_info)) {
+            DataToClientCompleted(client_info);
             return true;
         }else {
             ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLOUT, (void *)client_info->client);

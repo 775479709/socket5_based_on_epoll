@@ -115,7 +115,7 @@ obj *MemoryPool<obj, pool_size>::New()
 template <class obj, size_t pool_size>
 void MemoryPool<obj, pool_size>::Delete(obj *buffer)
 {
-    puts("memory_pool::do delete");
+    //puts("memory_pool::do delete");
     
     //test
     if(st.find(buffer) != st.end()) {

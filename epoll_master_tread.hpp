@@ -18,7 +18,7 @@ private:
     };
 
 public:
-    EpollMasterThread(const char *ip, int port, size_t work_thread_num = 2);
+    EpollMasterThread(const char *ip, int port, size_t work_thread_num = 1);
     ~EpollMasterThread();
 
 private:
@@ -96,14 +96,12 @@ EpollMasterThread<WorkThread>::EpollMasterThread(const char *ip, int port, size_
 
 template<class WorkThread>
 EpollMasterThread<WorkThread>::~EpollMasterThread(){
-    printf("delelte\n");
     for(int i = 0; i < work_thread_num_; i++) {
         int data = 0;
         write(work_thread_info_[i].master_write_pipe_fd, &data, 4);
         while(true) {
             sleep(1);
             if(work_thread_info_[i].epoll_work_thread->is_stop) {
-                puts("ok");
                 delete work_thread_info_[i].epoll_work_thread;
                 close(work_thread_info_[i].master_read_pipe_fd);
                 close(work_thread_info_[i].master_write_pipe_fd);
@@ -126,9 +124,7 @@ void EpollMasterThread<WorkThread>::Run(){
     std::cout<< "master thread is running!" << std::endl;
     events_ = new std::vector<epoll_event>(8);
     size_t current_thread_index = 0;
-    int temp = 0;
     while(true) {
-        if(temp >=3)break;
         int event_num = epoll_wait(epoll_fd_, &(*events_->begin()),static_cast<int>(events_->size()), 1);
         if(event_num < 0 && errno != EINTR) {
             std::cout << "epoll failure" << std::endl;
@@ -152,9 +148,6 @@ void EpollMasterThread<WorkThread>::Run(){
                             throw std::exception();
                         }
                         current_thread_index++;
-                        //test
-                        temp++;
-                        //test
                         if(current_thread_index >= work_thread_num_) {
                             current_thread_index = 0;
                         }

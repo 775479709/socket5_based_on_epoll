@@ -4,14 +4,14 @@
 
 class ServerWorkThread : public WorkThread{
 public:
-    int count = 0;
+    int client_count = 0;
     ServerWorkThread() {
     }
     void NewClient(ClientInfo *client_info){
-        printf("have client :%d\n", client_info->client->clinet_fd);
+        printf("have client :%d, now client_count = %d\n", client_info->client->clinet_fd, ++client_count);
     }
     void DataFromClient(ClientInfo *client_info){
-        printf("client_read_buffer_size= %d\n",client_info->read_buffer_size);
+        //printf("client_read_buffer_size= %d\n",client_info->read_buffer_size);
 
         char *buf = new char[client_info->read_buffer_size];
         size_t size = 0;
@@ -20,16 +20,16 @@ public:
             size += head->use_size;
         }
         CleanClientBuffer(client_info, 0);
-        puts("DataFromClient::send data to client");
+        //puts("DataFromClient::send data to client");
         bool is = DataToClient(client_info, buf, size);
         delete buf;
-        printf("count = %d,DataFromClient::send data to client ok!!!\n",count++);
+        //printf("count = %d,DataFromClient::send data to client ok!!!\n",count++);
     }
     void DataToClientCompleted(ClientInfo *client_info){
-        printf("send to Client %d is completed\n",client_info->client->clinet_fd);
+        //printf("send to Client %d is completed\n",client_info->client->clinet_fd);
     }
     void ClientLeave(ClientInfo *client_info){
-        printf("client %d is leaved\n",client_info->client->clinet_fd);
+        printf("client %d is leaved, now_client_count = %d\n",client_info->client->clinet_fd,--client_count);
     }
 };
 

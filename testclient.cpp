@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         printf("count = %d ,write ok!:%d\n",count,res);
         
         len = -2;
-        if(count % 10000 == 0) {
+        if(1) {
             len =read(sockfd, buf, 100);
             printf("len = %d\n",len);
             if(len != -1)buf[len] = 0;
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
             }
         }
         
-        printf("len = %d, data =\n",len);
+        //printf("len = %d, data = %s\n",len, buf);
         // if(count > 30000)
         // sleep(1);
         
