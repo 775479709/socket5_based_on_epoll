@@ -10,6 +10,7 @@ class EpollWorkThread
     {
         struct sockaddr_in client_address;
         int clinet_fd;
+        uint32_t event;
         void *data = nullptr;
     };
 
@@ -19,6 +20,8 @@ class EpollWorkThread
     static void *StartThread(void *instance);
     void Run();
     void CloseClient(Client *client);
+    void AddClientEvent(Client *client, uint32_t event);
+    void DeleteClientEvent(Client *client, uint32_t event);
 
 
     virtual void HandAcceptCompleted(Client *client) = 0;
@@ -83,16 +86,12 @@ void EpollWorkThread::Run()
         for (size_t i = 0; i < event_num; i++)
         {
             Client *client = (Client *)(*events_)[i].data.ptr;
-            if ((*events_)[i].events & EPOLLHUP)
+            if ((*events_)[i].events & EPOLLRDHUP)
             {
                 printf("hup\n");
                 CloseClient(client);
                 continue;
-            }
-            if ((*events_)[i].events & EPOLLOUT)
-            {
-                HandWriteEvent(client);
-            }
+}
             if ((*events_)[i].events & EPOLLIN)
             {
                 if (client == NULL)
@@ -107,10 +106,24 @@ void EpollWorkThread::Run()
                     HandReadEvent(client);
                 }
             }
+            if ((*events_)[i].events & EPOLLOUT)
+            {
+                HandWriteEvent(client);
+            }
             
         }
     }
     printf("work thread %d is eixt!\n",thread_idx);
+}
+
+void EpollWorkThread::AddClientEvent(Client *client, uint32_t event) {
+    client->event |= event;
+    ModifyFd(epoll_fd, client->clinet_fd, client->event, (void *)client);
+}
+
+void EpollWorkThread::DeleteClientEvent(Client *client, uint32_t event) {
+    client->event &= ~event;
+    ModifyFd(epoll_fd, client->clinet_fd, client->event, (void *)client);
 }
 
 void EpollWorkThread::CloseClient(Client *client)
@@ -149,7 +162,9 @@ void EpollWorkThread::FromMaster()
             socklen_t peer_len;
             getpeername(client_fd, (struct sockaddr *)&(client->client_address), &peer_len);
 
+            client->event = EPOLLIN | EPOLLRDHUP;
             AddFd(epoll_fd, client_fd, (void *)client);
+            
             HandAcceptCompleted(client);
             size = 0;
         }

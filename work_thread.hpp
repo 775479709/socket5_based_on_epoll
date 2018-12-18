@@ -174,12 +174,6 @@ void WorkThread::HandReadEvent(Client *client) {
     //test
 
     int len = readv(client->clinet_fd, read_iov_, READ_BUFFER_NUM);
-    int temp =1;
-    //int temp = readv(client->clinet_fd, read_iov_, READ_BUFFER_NUM);
-    sleep(1);
-    if((temp == -1 && errno != EAGAIN) || temp ==0) {
-        printf("temp = %d , len = %d is close???\n",temp,len);
-    }
 
     //test
     //printf("rev len = %d\n", len);
@@ -190,9 +184,7 @@ void WorkThread::HandReadEvent(Client *client) {
 
     ClientInfo *client_info = (ClientInfo *)client->data;
     if(len <= 0) {
-        if(len == 0) {
-            printf("len ==0\n");
-        }
+        // len == 0 have been closed
         DisconnectClient(client_info);
         return;
     }
@@ -239,30 +231,45 @@ void WorkThread::HandReadEvent(Client *client) {
 
 
 void WorkThread::HandWriteEvent(Client *client) {
+    printf("HandWrite event\n");
+
     ClientInfo *client_info = (ClientInfo *)(client->data);
     if(Writev(client_info)) {
-        ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLIN, (void *)client_info->client);
+        DeleteClientEvent(client_info->client, EPOLLOUT);
+        //ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLIN, (void *)client_info->client);
         DataToClientCompleted(client_info);
     }
 }
 
 
 bool WorkThread::Writev(ClientInfo *client_info){
-    
+    printf("Writev::\n");
+    if(client_info == nullptr) {
+        printf("what fuck!!\n");
+        sleep(20);
+    }
     Buffer *buffer = client_info->write_buffer;
     size_t size = client_info->write_buffer_size;
     
-    //printf("size = %d\n",size);
+    printf("writev::size = %d\n",size);
+    fflush(stdout);
 
 
     if(size != 0 && buffer == nullptr) {
         perror("1.Writev:: buffer | size error!!");
         throw "1.Writev:: buffer | size error!!";
     }
+
+    printf("asd = %d\n",size);
+    fflush(stdout);
+
     if(buffer == nullptr) {
         return true;
     }
     size_t count = 0;
+
+    
+
     while(count < WRITE_BUFFER_NUM && buffer != nullptr && buffer->use_size <= size) {
         write_iov_[count].iov_base = buffer->buffer_head;
         write_iov_[count].iov_len = buffer->use_size;
@@ -285,17 +292,23 @@ bool WorkThread::Writev(ClientInfo *client_info){
     }
     //test check
 
+    printf("pre write\n");
+    fflush(stdout);
+
+
     int len = writev(client_info->client->clinet_fd, write_iov_, count);
 
-    //printf("writev len = %d\n",len);
+    printf("writev len = %d\n",len);
 
-    if(len == -1 && errno == EINTR) {
-        len = 0;
+
+    if(len == -1 && (errno == EINTR || errno == EAGAIN)) {
+        return false;
     } else if(len < 0){
         for(Buffer *i = buffer; i != nullptr; i = buffer) {
             buffer = buffer->next;
             buffer_pool_->Delete(i);
         }
+        client_info->ResetBuffer(1);
         DisconnectClient(client_info);
         return false;
     }
@@ -333,6 +346,7 @@ bool WorkThread::Writev(ClientInfo *client_info){
 } 
 
 bool WorkThread::DataToClient(ClientInfo *client_info, Buffer *buffer, size_t size) {
+    printf("data to client :buffer\n");
     bool is_empty = client_info->write_buffer == nullptr;
     AddBufferBack(client_info, 1, buffer, size);
     if(is_empty) {
@@ -340,7 +354,8 @@ bool WorkThread::DataToClient(ClientInfo *client_info, Buffer *buffer, size_t si
             DataToClientCompleted(client_info);
             return true;
         }else {
-            ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLOUT, (void *)client_info->client);
+            AddClientEvent(client_info->client, EPOLLOUT);
+            //ModifyFd(epoll_fd, client_info->client->clinet_fd, EPOLLOUT, (void *)client_info->client);
         }
     }
     return false;
@@ -386,6 +401,7 @@ bool WorkThread::DataToClient(ClientInfo *client_info, char *buf, size_t size) {
 }
 
 void WorkThread::DisconnectClient(ClientInfo *client_info) {
+    printf("dis connnect\n");
     CloseClient(client_info->client);
     CleanClientBuffer(client_info, 0);
     CleanClientBuffer(client_info, 1);

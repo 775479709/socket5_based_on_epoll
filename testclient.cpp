@@ -62,8 +62,9 @@ int main(int argc, char *argv[])
     int count = 0;
     int len;
     char buf[101000];
+    //sleep(20);
     while(1) {
-        if(count > 10000)break;
+        //if(count > 10000)break;
         std::string x = "hello world";
         std::string tmp = std::to_string(++count) + " " + x;
         //if(count == 1)
@@ -78,9 +79,10 @@ int main(int argc, char *argv[])
         printf("count = %d ,write ok!:%d\n",count,res);
         
         len = -2;
-        if(0) {
+        if(count % 10000 == 0) {
             len =read(sockfd, buf, 100);
-            printf("len = %d\n",len);
+            printf("read::len = %d\n",len);
+            //sleep(1);
             if(len != -1)buf[len] = 0;
             else {
                 continue;

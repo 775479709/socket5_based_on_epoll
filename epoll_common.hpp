@@ -40,8 +40,8 @@ void AddFd(int epoll_fd, int fd, void *ptr){
 void ModifyFd(int epoll_fd, int fd, uint32_t events, void *ptr) {
     epoll_event event;
     event.data.ptr = ptr;
-    event.events = events | EPOLLRDHUP;
-    epoll_ctl( epoll_fd, EPOLL_CTL_MOD, fd, &event );
+    event.events = events;
+    epoll_ctl( epoll_fd, EPOLL_CTL_MOD, fd, &event);
 }
 
 void RemoveFd(int epoll_fd, int fd){

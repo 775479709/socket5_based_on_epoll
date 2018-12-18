@@ -62,7 +62,7 @@ EpollMasterThread<WorkThread>::EpollMasterThread(const char *ip, int port, size_
         std::cout << "master thread : listen error!" << std::endl;
     }
     epoll_fd_ = epoll_create(5);
-    AddFd(epoll_fd_, listen_fd_,(void *)NULL);
+    AddFd(epoll_fd_, listen_fd_, (void *)NULL);
 
     work_thread_info_ = new WorkThreadInfo[work_thread_num];
     threads_ = new pthread_t[work_thread_num];

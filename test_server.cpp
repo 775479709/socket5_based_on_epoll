@@ -21,7 +21,10 @@ public:
         }
         CleanClientBuffer(client_info, 0);
         //puts("DataFromClient::send data to client");
-        //bool is = DataToClient(client_info, buf, size);
+        if(client_info->write_buffer_size < 10 * 1024 * 1024)
+        {
+            bool is = DataToClient(client_info, buf, size);
+        }
         delete buf;
         //printf("count = %d,DataFromClient::send data to client ok!!!\n",count++);
     }
@@ -37,6 +40,7 @@ public:
 
 int main()
 {
+    signal(SIGPIPE,SIG_IGN);
     EpollMasterThread<ServerWorkThread> *server = new EpollMasterThread<ServerWorkThread>("127.0.0.1", 1024);
     delete server;
     
