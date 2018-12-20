@@ -56,7 +56,7 @@ int main()
     std::cout << "data:" << data;
 
     signal(SIGPIPE, SIG_IGN);
-    EpollMasterThread<ServerWorkThread>* server = new EpollMasterThread<ServerWorkThread>("192.168.40.133", 1180);
+    EpollMasterThread<ServerWorkThread>* server = new EpollMasterThread<ServerWorkThread>(0, 1180);
     delete server;
 
     return 0;

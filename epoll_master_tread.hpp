@@ -48,7 +48,11 @@ EpollMasterThread<WorkThread>::EpollMasterThread(const char* ip, int port, size_
 
     int ret = 0;
     local_address_.sin_family = AF_INET;
-    inet_pton(AF_INET, ip, &local_address_.sin_addr);
+    if (ip == nullptr) {
+        local_address_.sin_addr.s_addr = 0;
+    } else {
+        inet_pton(AF_INET, ip, &local_address_.sin_addr);
+    }
     local_address_.sin_port = htons(port);
 
     ret = bind(listen_fd_, (struct sockaddr*)&local_address_, sizeof(local_address_));
