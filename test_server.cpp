@@ -46,7 +46,7 @@ public:
     }
 };
 
-int main()
+int main(int argc, char** argv)
 {
     freopen("data.txt", "r", stdin);
     int c;
@@ -54,9 +54,13 @@ int main()
         data.push_back(c);
     }
     std::cout << "data:" << data;
+    int thread_num = 2;
+    if (argc > 1) {
+        thread_num = atoi(argv[1]);
+    }
 
     signal(SIGPIPE, SIG_IGN);
-    EpollMasterThread<ServerWorkThread>* server = new EpollMasterThread<ServerWorkThread>(0, 1180);
+    EpollMasterThread<ServerWorkThread>* server = new EpollMasterThread<ServerWorkThread>(0, 1180, thread_num);
     delete server;
 
     return 0;
