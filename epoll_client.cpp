@@ -38,9 +38,9 @@ void StartEpollClient(Data data)
     char read_buf[1024];
 
     while (true) {
-        for (auto fd : sock_fds) {
-            write(fd, buf.c_str(), sizeof(buf));
-        }
+        sleep(1);
+        int index = rand() % sock_fds.size();
+        write(sock_fds[index], buf.c_str(), sizeof(buf));
 
         int event_num = epoll_wait(epoll_fd, events_, 65536, 1);
         for (int i = 0; i < event_num; i++) {
