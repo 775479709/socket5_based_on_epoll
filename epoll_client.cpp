@@ -24,8 +24,8 @@ void StartEpollClient(Data data)
             close(sockfd);
             continue;
         }
-
-        printf("client %d connect ok !!\n", i + 1);
+        if (i % 100 == 0)
+            printf("client %d connect ok !!\n", i + 1);
 
         sock_fds.push_back(sockfd);
         long long ptr = sockfd;
@@ -36,11 +36,15 @@ void StartEpollClient(Data data)
 
     std::string buf = "asdasdasdasdasda";
     char read_buf[1024];
-
+    size_t read_count = 0;
+    size_t write_count = 0;
     while (true) {
         sleep(1);
         int index = rand() % sock_fds.size();
-        write(sock_fds[index], buf.c_str(), sizeof(buf));
+        int res = write(sock_fds[index], buf.c_str(), sizeof(buf));
+        if (res > 0) {
+            printf("write:%d\n", ++write_count);
+        }
 
         int event_num = epoll_wait(epoll_fd, events_, 65536, 1);
         for (int i = 0; i < event_num; i++) {
@@ -48,6 +52,9 @@ void StartEpollClient(Data data)
 
             if (events_[i].events & EPOLLIN) {
                 int ret = read(fd, read_buf, 1024);
+                if (ret > 0) {
+                    printf("write:%d\n", ++read_count);
+                }
             }
         }
     }
