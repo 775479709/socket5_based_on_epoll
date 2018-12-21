@@ -22,6 +22,7 @@ void StartEpollClient(Data data)
         if (res == -1) {
             puts("client connect error!!!");
             close(sockfd);
+            break;
             continue;
         }
         if (i % 100 == 0)
